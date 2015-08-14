@@ -1,0 +1,7 @@
+#!/bin/bash
+#
+# It will login via ssh to the computing node of the job.
+#
+
+HOST="`qstat -f $1 | grep exec_host | cut -f2 -d= | cut -f1 -d+ | cut -f1 -d/`"
+ssh -X $HOST

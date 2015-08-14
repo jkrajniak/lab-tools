@@ -1,0 +1,101 @@
+if [ -f ~/.bashrc ]; then
+ . ~/.bashrc
+fi
+
+. /etc/profile
+
+export PATH="$HOME/bin:$PATH"
+
+alias "qu"="qstat -u $USER"
+alias "qf"="qstat -f "
+alias "qa"="quota -ws"
+alias "gb"="gbalance"
+alias 'sq'='showq'
+alias 'squ'="showq | grep $USER"
+alias 'll'='ls -h -l --color=auto'
+alias 'ls'='ls --color=auto'
+alias 'ml'='module load'
+alias 'mav'='module av'
+alias 'cdjob'='. $HOME/bin/cdjob'
+alias 'cdlast'='cd `cat ~/.last_location`'
+
+# Some constants to load
+alias 'mlg'='module load GROMACS'
+alias 'mlv'='module load votca'
+alias 'mlmc'='module load mc'
+
+alias "rm"="rm -i"
+alias 'cdwork'='cd $PBS_O_WORKDIR'
+alias '..'='cd ..'
+
+alias 'cleanhash'='rm -iv \#*'
+
+# Run interactive job
+alias "qsubi"="qsub -I -lnodes=1:ppn=20 -lwalltime=1:00:00"
+
+function PWD {
+  tmp=${PWD%/*/*};
+  [ ${#tmp} -gt 0 -a "$tmp" != "$PWD" ] && echo ${PWD:${#tmp}+1} || echo $PWD;
+}
+
+export PS1="@\h \$(PWD 3) $ "
+
+if [ "$PBS_NODEFILE" != "" ]; then  ## Case when job is running
+  n_proc=$(cat $PBS_NODEFILE | wc -l)
+  n_node=$(cat $PBS_NODEFILE | uniq | wc -l)
+
+  # Aliases for intel mpi
+  alias mpdboot_local="mpdboot -f $PBS_NODEFILE -n $n_node -r ssh -v"
+  alias mpiexec_local="mpiexec -n $n_proc " 
+else 
+# Load bash_complete
+  for i in /etc/bash_completion.d/*; do
+    source $i
+  done
+  
+# Load module accounting
+  module load accounting
+
+# Additional auto_complete function.
+# _qjobs -> auto-complete based on list of jobs submitted
+# _qsub_project -> auto-complete based on list of projects available 
+  _qjobs() {
+    local cur=${COMP_WORDS[COMP_CWORD]}
+    COMPREPLY=( $(compgen -W "`qstat | cut -f1 -d' ' | egrep '^[0-9]'`" -- $cur) )
+  }
+
+  _qsub_projects() {
+    local prev
+
+    COMPREPLY=()   # Array variable storing the possible completions.
+    prev=${COMP_WORDS[COMP_CWORD-1]}
+    cur=${COMP_WORDS[COMP_CWORD]}
+  
+    case "$prev" in
+      -A*)
+        if [ "X$_HCP_PROJECTS" == "X" ]; then
+          export _HCP_PROJECTS="`gbalance --full --raw | cut -f3 -d'|' | tail -n+2 | cut -f2 -d=`"
+        fi
+        COMPREPLY=( $( compgen -W "${_HCP_PROJECTS}" -- $cur) )
+        ;;
+    esac
+    return 0
+  }
+
+  complete -F _qjobs qdel
+  complete -F _qjobs qstat
+  complete -F _qjobs cdjob
+  complete -F _qjobs sshjob
+  complete -o default -F _qsub_projects qsub
+
+  gbalance
+  qstat -u "$USER"
+  echo "***** QUOTA *****"
+  quota -ws
+  echo -e "\n\n***** BIG DATA QUOTA *****\n"
+  mmlsquota -u $USER --block-size G
+  mmlsquota -j lts_00009 /dev/vol_ddn2 --block-size G
+  
+fi 
+
+umask 0027
