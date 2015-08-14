@@ -1,0 +1,23 @@
+<cg>
+  <bonded>
+    <name>bond</name>
+    <min>0.19</min>
+    <max>0.265</max>
+    <step>0.001</step>
+    <inverse>
+      <gromacs>
+        <table>table_b1.xvg</table>
+      </gromacs>
+    </inverse>
+  </bonded>
+
+  <inverse>
+    <gromacs>
+      <pot_max>1e8</pot_max>
+      <table_end>0.5</table_end>
+      <min>0.19</min>
+      <max>0.265</max>
+      <table_bins>0.001</table_bins>
+    </gromacs>
+  </inverse>
+</cg>
