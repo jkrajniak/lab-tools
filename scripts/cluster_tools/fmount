@@ -1,0 +1,85 @@
+#!/bin/bash
+#
+# jkrajniak@gmail.com (Jakub Krajniak)
+#
+# This script allows you to mount the sshfs files system based on the
+# configuration in $HOME/.sshfs
+#
+# It uses `sshfs` command.
+#
+#
+# Format of .sshfs file:
+# <remote mount point> <optional options> <local mount point>
+#
+# Example of .sshfs
+#
+# server.be:. /home/foo/mount/server.be
+#
+# Usage:
+#
+#  $ cd /home/foo/mount
+#  $ fmount server.be
+#  $ fusermount -u server.be
+#
+
+CONFIG="$HOME/.sshfs"
+
+if [ ! -f $CONFIG ]; then
+  echo "Error: Config $CONFIG not found"
+  exit 1
+fi
+
+ARG1="`echo $1 | sed -e 's#/$##g;'`"
+
+if [[ $1 =~ "${HOME}" ]]; then
+  MOUNT_DIR="$ARG1"
+else
+  MOUNT_DIR="$PWD/$ARG1"
+fi
+
+if [ ! -d $MOUNT_DIR ]; then
+  echo "Error: Mount dir $MOUNT_DIR does not exists"
+  exit 1
+fi
+
+. $CONFIG  &> /dev/null
+
+if [[ -z $DEFAULTS ]]; then
+  DEFAULTS=""
+fi
+
+STATUS=$(cat $CONFIG | \
+{ while read a; do
+  REMOTE_POINT="`echo $a | cut -f1 -d' '`"
+  OPT="`echo $a | cut -f2 -d' '`"
+  LOCAL_DIR="`echo $a | cut -f3 -d' '`"
+
+  if [ "X$LOCAL_DIR" == "X" ]; then
+    LOCAL_DIR=$OPT
+    OPT=""
+  fi
+
+  if [ "$LOCAL_DIR" == "$MOUNT_DIR" ]; then
+    if [ "X$OPT" == "X" ]; then
+      sshfs $REMOTE_POINT $LOCAL_DIR
+    else
+      OPT="`echo $OPT | sed -e \"s#defaults#$DEFAULTS#\"`"
+      sshfs -o $OPT $REMOTE_POINT $LOCAL_DIR
+    fi
+    if [ "$?" == "1" ]; then
+      echo 2
+    else
+      echo 1
+    fi
+    break
+  fi
+done
+})
+
+case $STATUS in
+  0) echo "Error: mount point $MOUNT_DIR not found";
+    exit 1
+    ;;
+  1) exit 0;;
+  2) echo "Error: Unable to mount"; exit 1;;
+esac
