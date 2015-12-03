@@ -1,0 +1,20 @@
+#!/bin/bash
+# Copyright (C) 2015 Jakub Krajniak <jkrajniak@gmail.com>
+#
+# Distributed under terms of the GNU GPLv3 license.
+#
+# Submits again job to the queue system.
+#
+
+OLDPWD=$PWD
+DIR=`qstat -f $1 | grep -A 1 WORKDIR | tr '\n' ' ' | sed -e 's/\t//g; s/ //g' | cut -f1 -d',' | cut -f2 -d'='`
+cd $DIR
+SCR="`qstat -f $1 | grep submit_args | cut -f2 -d'='`"
+echo "Script to run $DIR/$SCR"
+echo -n "Do you want to restart job $1 ? [y/n]: "
+read a
+if [ "$a" == "y" ]; then
+  qdel $1
+  qsub `qstat -f $1 | grep submit_args | cut -f2 -d'='`
+fi
+cd $OLDPWD

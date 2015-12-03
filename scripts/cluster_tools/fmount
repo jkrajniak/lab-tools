@@ -1,6 +1,8 @@
 #!/bin/bash
 #
-# jkrajniak@gmail.com (Jakub Krajniak)
+# Copyright (C) 2015 Jakub Krajniak <jkrajniak@gmail.com>
+#
+# Distributed under terms of the GNU GPLv3 license.
 #
 # This script allows you to mount the sshfs files system based on the
 # configuration in $HOME/.sshfs

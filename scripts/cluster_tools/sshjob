@@ -1,5 +1,9 @@
 #!/bin/bash
 #
+# Copyright (C) 2015 Jakub Krajniak <jkrajniak@gmail.com>
+#
+# Distributed under terms of the GNU GPLv3 license.
+#
 # It will login via ssh to the computing node of the job.
 #
 
