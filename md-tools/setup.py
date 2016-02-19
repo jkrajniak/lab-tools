@@ -18,7 +18,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from distutils.core import setup
 from distutils.extension import Extension
 from Cython.Build import cythonize
-from Cython.Distutils import build_ext
+from Cython.Distutils import build_ext as _build_ext
+
+
+class build_ext(_build_ext):
+    def finalize_options(self):
+        _build_ext.finalize_options(self)
+        __builtins__.__NUMPY_SETUP__ = False
+        import numpy
+        self.include_dirs.append(numpy.get_include())
+
 
 ext_module = Extension(
     'bonds',
@@ -30,6 +39,6 @@ ext_module = Extension(
 setup(
       name = 'bond_libs',
       cmdclass = {'build_ext': build_ext},
-      ext_modules = [ext_module]
-      #ext_modules = cythonize('libs/bonds.pyx'),
+      ext_modules = [ext_module],
+      install_requires=['numpy', 'Cython']
 )

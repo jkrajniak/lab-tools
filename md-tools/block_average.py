@@ -41,11 +41,12 @@ def plot_blocks(data, max_t):
 
     si = []
     for t in range(2, max_t):
-        tb = np.ceil(n/float(t))
+        tb = np.floor(n/float(t))
         x_blocks = np.array_split(data, tb)
-        v2 = t*np.average(np.power(map(np.mean, x_blocks) - mean, 2)) / var_tot
-        si.append([t, v2])
+        v2 = np.average(np.power(map(np.mean, x_blocks) - mean, 2))
+        si.append([t, t*v2/var_tot])
     si = np.array(si)
+
     plt.plot(si[:, 0], si[:, 1])
     plt.xlabel('s')
     plt.ylabel(r'$s\sigma^2(<A_b>)/\sigma^2(A)$')

@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import argparse
+import cPickle
 import h5py
 import numpy as np
 import sys
@@ -46,6 +47,7 @@ def _args():
     parser.add_argument('--group', type=str, default='atoms',
                         help='Name of atom group')
     parser.add_argument('--out_ee', type=str, help='output end-to-end distance', default=None)
+    parser.add_argument('--out_ee_points', type=str, help='Output end-to-end points', default=None)
     parser.add_argument('--out_rg', help='Output radius-of-gyration', default=None)
     parser.add_argument('--out_int', help='Output of average interal distance', default=None)
     return parser
@@ -66,7 +68,7 @@ def calculate_rg(chains, chain_length, masses, box, half_box, tot_mass, frame):
         ch_com /= float(chain_length)
         for n in xrange(chain_length):
             d = frame[ch*chain_length+n] - ch_com
-            rg[ch] += masses[ch*chain_length+n]*d.dot(d)
+            rg[ch] += masses[ch*chain_length+n]*np.sqrt(d.dot(d))
         rg[ch] /= tot_mass
     return rg
 
@@ -74,6 +76,8 @@ def calculate_rg(chains, chain_length, masses, box, half_box, tot_mass, frame):
 def fix_pbc(traj, box, half_box, chain_length, number_of_chains):
     print('Fix PBC for polymer chains')
     fidx = 0
+    invBox = 1.0/box
+    print invBox
     for frame in traj:
         sys.stdout.write('f={}\r'.format(fidx))
         sys.stdout.flush()
@@ -82,10 +86,11 @@ def fix_pbc(traj, box, half_box, chain_length, number_of_chains):
                 b1, b2 = frame[ch*chain_length+n], frame[ch*chain_length+n+1]
                 for j in [0, 1, 2]:
                     d = b2[j] - b1[j]
-                    if d > half_box[j]:
-                        b2[j] -= box[j]
-                    elif d < -half_box[j]:
-                        b2[j] += box[j]
+                    b2[j] -= round(d*invBox[j])*box[j]
+                d = b2 - b1
+                if np.sqrt(d.dot(d)) > 0.5:
+                    print ch*chain_length+n, ch*chain_length+n+1
+                    sys.exit(1)
         fidx += 1
     return traj
 
@@ -95,7 +100,7 @@ def compute_ee(chains, chain_length, frame):
     for ch in xrange(chains):
         b1, b2 = frame[ch*chain_length], frame[ch*chain_length+chain_length-1]
         d = b2 - b1
-        ee.append(d.dot(d))
+        ee.append(np.sqrt(d.dot(d)))
     return ee
 
 
@@ -118,6 +123,15 @@ def main():
         out_ee = args.out_ee
         np.savetxt(out_ee, ee)
         print('Saved to {}'.format(out_ee))
+
+    if args.out_ee_points:
+        print('Save end-to-end points (raw data)...')
+        ee_points = []
+        for frame in trj:
+            for ch in xrange(args.molecules):
+                b1, b2 = frame[ch*args.N], frame[ch*args.N+args.N-1]
+                ee_points.append([b1, b2])
+        cPickle.dump(ee_points, open(args.out_ee_points, 'wb'))
 
     if args.out_rg:
         print('Calculating radius of gyration')
