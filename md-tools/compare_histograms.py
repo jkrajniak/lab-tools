@@ -26,6 +26,8 @@ def _args():
     parser = argparse.ArgumentParser()
     parser.add_argument('data_1')
     parser.add_argument('data_2')
+    parser.add_argument('--raw_data', action='store_true', default=True,
+                        help='data_1 and data_2 are a raw data')
     parser.add_argument('--min_max', help='Histogram range, format min:max')
     parser.add_argument('--bins', type=int, help='Number of bins')
     parser.add_argument('--test_type', help='Name of test')
@@ -79,16 +81,19 @@ def main():
     data_2 = np.loadtxt(args.data_2)
     print('Data read')
 
-    if args.frames:
+    if args.frames and args.raw_data:
         data_1 = data_1[:args.frames]
         data_2 = data_2[:args.frames]
 
-    min_bins, max_bins = map(float, args.min_max.split(':'))
-    bins = np.arange(min_bins, max_bins, (max_bins-min_bins)/args.bins)
-
     # Create histograms with the same bins.
-    histogram_1, _ = np.histogram(data_1, bins=bins, density=False)
-    histogram_2, _ = np.histogram(data_2, bins=bins, density=False)
+    if args.raw_data:
+        min_bins, max_bins = map(float, args.min_max.split(':'))
+        bins = np.arange(min_bins, max_bins, (max_bins-min_bins)/args.bins)
+        histogram_1, _ = np.histogram(data_1, bins=bins, density=False)
+        histogram_2, _ = np.histogram(data_2, bins=bins, density=False)
+    else:
+        histogram_1 = data_1[:, (0, 1)]
+        histogram_2 = data_2[:, (0, 1)]
 
     print('Running test {}'.format(args.test_type))
     tests[args.test_type](histogram_1, histogram_2)
