@@ -25,6 +25,7 @@ import sys
 def _args():
     parser = argparse.ArgumentParser('Sort H5MD file according to /id dataset')
     parser.add_argument('in_file')
+    parser.add_argument('--force', action='store_true', default=False)
 
     return parser.parse_args()
 
@@ -53,9 +54,18 @@ def main():
     args = _args()
     h5 = h5py.File(args.in_file, 'r+')
 
-    yn = raw_input('Do you want to sort file {}? (yes/no): '.format(args.in_file))
+    if 'sorted' in h5.attrs and not args.force:
+	yn = raw_input('Warning, file was already sorted. Do you want to repeat it? (yes/no)')
+        if yn == 'no':
+            return False
+    
+    if not args.force:
+        yn = raw_input('Do you want to sort file {}? (yes/no): '.format(args.in_file))
+    else:
+        yn = 'yes'
     if yn == 'yes':
         sort_file(h5)
+        h5['/'].attrs['sorted'] = True
         h5.close()
         print('File {} sorted, closing'.format(args.in_file))
 
