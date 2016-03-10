@@ -40,7 +40,7 @@ def test_squared_diff(hist_1, hist_2):
     """Test function: sum of squared differences."""
 
     diff = hist_2 - hist_1
-    return np.nansum(np.power(diff, 2))
+    print('T = {}'.format(np.nansum(np.power(diff, 2))))
 
 
 def chi_square(hist_1, hist_2):

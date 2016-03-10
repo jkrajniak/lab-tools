@@ -25,7 +25,7 @@ import numpy as np
 def _args():
     parser = argparse.ArgumentParser('Compute histogram and save to the disk')
     parser.add_argument('--bins', help='Number of bins', default=100, type=int)
-    parser.add_argument('--normed', help='Normed', default=1, type=int)
+    parser.add_argument('--normed', help='Normed', default=False, action='store_true')
     parser.add_argument('--plot', help='Plot?', action='store_true', default=False)
     parser.add_argument('--scale', help='Multiply values by', default=1.0, type=float)
     parser.add_argument('--interactive', help='Interactive', action='store_true', default=False)
@@ -40,7 +40,10 @@ def main():
     raw_data = []
     for input_file in args.input_file:
         print('Reading file {}'.format(input_file))
-        data = np.loadtxt(input_file) * args.scale
+        if input_file.endswith('npy'):
+            data = np.load(input_file) * args.scale
+        else:
+            data = np.loadtxt(input_file) * args.scale
         raw_data.extend(data)
     raw_data = np.array(raw_data)
 
