@@ -64,13 +64,35 @@ def chi_square_shape(hist_1, hist_2):
     print('P(chi^2 > T) = {}'.format(chisqprob(val, ddof)))
 
 
+def ecf(hist_1, bins):
+    """Computes empirical cumulative distribution."""
+    n = sum(hist_1[:, 1])
+    return np.array([np.sum([y for x, y in hist_1 if x < xl]) for xl in bins]) / n
+
+
+def kolmogorov_smirnov(hist_1, hist_2):
+    """Kolmogorov-Smirnov"""
+    n1 = len(hist_1)
+    n2 = len(hist_2)
+    ecf_1 = ecf(hist_1, hist_1[:, 0])
+    ecf_2 = ecf(hist_2, hist_1[:, 0])
+    distance = np.max(ecf_1 - ecf_2)
+    pref = np.sqrt((n1*n2) / (n1+n2))
+    c_a = 1.36
+    accept_null = distance < c_a / np.sqrt(n1)
+    print('T = {}'.format(distance))
+    print('pref = {}'.format(pref))
+    print('Accept null = {}'.format(accept_null))
+
+
 def main():
     args = _args()
 
     tests = {
         'squared_diff': test_squared_diff,
         'chi_square': chi_square,
-        'chi_square_shape': chi_square_shape
+        'chi_square_shape': chi_square_shape,
+        'ks': kolmogorov_smirnov
     }
     if args.test_type not in tests:
         print('--test_type not found, available: {}'.format(tests.keys()))
