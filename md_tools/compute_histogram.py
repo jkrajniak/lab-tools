@@ -25,9 +25,11 @@ import numpy as np
 def _args():
     parser = argparse.ArgumentParser('Compute histogram and save to the disk')
     parser.add_argument('--bins', help='Number of bins', default=100, type=int)
-    parser.add_argument('--normed', help='Normed', default=1, type=int)
+    parser.add_argument('--normed', help='Normed', default=False, action='store_true')
     parser.add_argument('--plot', help='Plot?', action='store_true', default=False)
     parser.add_argument('--scale', help='Multiply values by', default=1.0, type=float)
+    parser.add_argument('--min', help='Minimum value of binds', default=None, type=float)
+    parser.add_argument('--max', help='Maximum value of binds', default=None, type=float)
     parser.add_argument('--interactive', help='Interactive', action='store_true', default=False)
     parser.add_argument('--type', choices=('bonds', 'angles', 'no'), default='no')
     parser.add_argument('input_file', help='Input file', nargs='+')
@@ -40,7 +42,10 @@ def main():
     raw_data = []
     for input_file in args.input_file:
         print('Reading file {}'.format(input_file))
-        data = np.loadtxt(input_file) * args.scale
+        if input_file.endswith('npy'):
+            data = np.load(input_file) * args.scale
+        else:
+            data = np.loadtxt(input_file) * args.scale
         raw_data.extend(data)
     raw_data = np.array(raw_data)
 
@@ -50,14 +55,21 @@ def main():
         print('Warning! Raw data contains NaN and Infinite values ({})'.format(
             len(raw_data)-len(data)))
 
-    n, bins = np.histogram(data, bins=args.bins, density=args.normed)
+    if args.min and args.max:
+        bin_min, bin_max = args.min, args.max
+        dw = (bin_max-bin_min) / args.bins
+        bin_values = np.arange(bin_min, bin_max + dw, dw)
+    else:
+        bin_values = args.bins
+
+    n, bins = np.histogram(data, bins=bin_values, density=args.normed)
 
     bw = bins[2] - bins[1]
     bw = bins + bw
     if args.type == 'bonds':
-        n /= (4*np.pi*(bw[:len(n)])**2)
+        n = n / (4*np.pi*(bw[:len(n)])**2)
     elif args.type == 'angles':
-        n /= np.rad2deg(np.sin(np.deg2rad(bw[:len(n)])))
+        n = n / np.rad2deg(np.sin(np.deg2rad(bw[:len(n)])))
     dt = bins[2] - bins[1]
     n_sum = sum(n*(bins[2]-bins[1]))
 
@@ -82,7 +94,7 @@ def main():
         plt.show()
 
     if args.output_file is None:
-        args.output_file = '{}.hist'.format(args.input_file[0].split('.')[:-1][0])
+        args.output_file = '{}.hist'.format('.'.join(args.input_file[0].split('.')[:-1]))
 
     print('Save output to {}'.format(args.output_file))
     np.savetxt(args.output_file, zip([x+dt for x in bins][:-1], n))

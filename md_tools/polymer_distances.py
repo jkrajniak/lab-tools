@@ -44,6 +44,7 @@ def _args():
     parser.add_argument('--N', type=int, help='Number of beads in molecule', required=True)
     parser.add_argument('--begin', '-b', type=int, default=0, help='Begin time frame')
     parser.add_argument('--end', '-e', type=int, default=-1, help='End time frame')
+    parser.add_argument('--every-frame', dest='every_frame', type=int, default=1, help='Read n-th every frame')
     parser.add_argument('--group', type=str, default='atoms',
                         help='Name of atom group')
     parser.add_argument('--out_ee', type=str, help='output end-to-end distance', default=None)
@@ -110,7 +111,7 @@ def main():
     data = h5py.File(args.trj, 'r')
 
     idx, box, trj, masses = files_io.prepare_h5md(data, args.group, args.begin, args.end,
-                                                  no_image=True)
+                                                  no_image=True, step=args.every_frame)
 
     half_box = 0.5*box
     trj = fix_pbc(trj, box, half_box, args.N, args.molecules)
