@@ -1,5 +1,5 @@
 """
-Copyright (C) 2014 Jakub Krajniak <jkrajniak@gmail.com>
+Copyright (C) 2014-2016 Jakub Krajniak <jkrajniak@gmail.com>
 
 This file is part of lab-tools.
 
