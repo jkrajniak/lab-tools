@@ -31,7 +31,7 @@ class build_ext(_build_ext):
 
 ext_module = Extension(
     'bonds',
-    ['libs/bonds.pyx'],
+    ['md_libs/bonds.pyx'],
     extra_compile_args=['-fopenmp', '-march=corei7-avx'],
     extra_link_args=['-fopenmp', '-march=corei7-avx']
     )
