@@ -36,13 +36,15 @@ def sort_file(h5):
     for t in xrange(T):
         sys.stdout.write('Progress: {:.2f} %\r'.format(100.0*float(t)/T))
         sys.stdout.flush()
-        for ag in atom_groups:
+        for ag in atom_groups:  # Iterate over atom_groups
+            # Create sorted id mapping.
             ids = h5['/particles/{}/id/value'.format(ag)]
             idd = [
                 x[1] for x in sorted(
                     [(p_id, col_id) for col_id, p_id in enumerate(ids[t])],
                     key=lambda y: (True, y[0]) if y[0] == -1 else (False, y[0]))
                 ]
+            # Iterate over group with value dataset and sort it according to particle.
             for k in h5['/particles/{}/'.format(ag)].keys():
                 if 'value' in h5['/particles/{}/{}'.format(ag, k)].keys():
                     path = '/particles/{}/{}/value'.format(ag, k)

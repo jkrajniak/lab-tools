@@ -23,8 +23,8 @@ import h5py
 import numpy as np
 import sys
 
-from libs import bonds
-from libs import files_io
+from md_libs import bonds
+from md_libs import files_io
 
 
 class ListAction(argparse.Action):

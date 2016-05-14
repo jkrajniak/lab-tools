@@ -19,8 +19,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import argparse
 import functools
-from libs import bonds
-from libs import files_io
+from md_libs import bonds
+from md_libs import files_io
 import h5py
 import multiprocessing as mp
 import numpy

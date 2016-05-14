@@ -20,11 +20,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import argparse
 import h5py
 
-from libs import files_io
+from md_libs import files_io
 
 
 def _args():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser('Update atom positions of input gro file from H5MD file.')
     parser.add_argument('--h5', required=True)
     parser.add_argument('--group', required=True)
     parser.add_argument('--input_gro', required=True)

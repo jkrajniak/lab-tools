@@ -29,8 +29,8 @@ import time
 
 import h5py
 
-from libs import bonds as bond_libs
-from libs import files_io
+from md_libs import bonds as bond_libs
+from md_libs import files_io
 from mpi4py import MPI
 
 size = MPI.COMM_WORLD.size

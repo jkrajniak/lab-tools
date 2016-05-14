@@ -21,7 +21,7 @@ operation. To achive this we need to explicitly define the bonds between the ato
 
 import argparse
 
-from libs import files_io
+from md_libs import files_io
 
 print 'replicate'
 print 'usage: '
@@ -51,8 +51,7 @@ print 'Config:'
 for mol in molecules:
   print '\t-', mol
   mol_name, top_file = mol.split(':')
-  mol_top[mol_name] = files_io.TopologyFile(top_file)
-  mol_top[mol_name].open()
+  mol_top[mol_name] = files_io.GROMACSTopologyFile(top_file)
   mol_top[mol_name].read()
   mol_atom_nr[mol_name] = len(mol_top[mol_name].atoms)
 
@@ -67,7 +66,8 @@ coordinate_file.open()
 coordinate_file.read()
 
 # Output topology
-output_top = files_io.TopologyFile(args.out)
+output_top = files_io.GROMACSTopologyFile(args.out)
+output_top.init()
 
 # Fill up the new topology by reading the coordinate file and use the atom_id from that file.
 # We assume that each of the topology forms consistent block of entries so there is no mix.

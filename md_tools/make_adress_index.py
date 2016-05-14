@@ -1,5 +1,6 @@
+#!/usr/bin/env python
 """
-Copyright (C) 2015 Jakub Krajniak <jkrajniak@gmail.com>
+Copyright (C) 2016 Jakub Krajniak <jkrajniak@gmail.com>
 
 This file is distributed under free software licence:
 you can redistribute it and/or modify it under the terms of the
@@ -19,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import argparse
 import math
 
-from libs import files_io
+from md_libs import files_io
 
 def _args():
     parser = argparse.ArgumentParser('Creates AdResS index particles')
