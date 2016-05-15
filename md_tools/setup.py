@@ -15,8 +15,9 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-from distutils.core import setup
-from distutils.extension import Extension
+
+from setuptools import setup
+from setuptools import Extension
 from Cython.Build import cythonize
 from Cython.Distutils import build_ext as _build_ext
 
@@ -37,8 +38,10 @@ ext_module = Extension(
     )
 
 setup(
-      name = 'bond_libs',
-      cmdclass = {'build_ext': build_ext},
-      ext_modules = [ext_module],
-      install_requires=['numpy', 'Cython']
+    name='lab-tools',
+    cmdclass = {'build_ext': build_ext},
+    ext_modules = [ext_module],
+    install_requires=['numpy', 'Cython'],
+    test_suite='tests',
+    version='0.0.1'
 )

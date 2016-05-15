@@ -498,7 +498,6 @@ class GROMACSTopologyFile(object):
     """Very basic representation of topology file."""
 
     def __init__(self, file_name):
-        super(GROMACSTopologyFile, self).__init__(file_name)
         self.file_name = file_name
         self.title = None
         self.atoms_updated = False
@@ -544,7 +543,11 @@ class GROMACSTopologyFile(object):
             'moleculetype': self._parse_moleculetype,
             'system': self._parse_system,
             'molecules': self._parse_molecules,
-            'atomtypes': self._parse_atomtypes
+            'atomtypes': self._parse_atomtypes,
+            'nonbond_params': self._parse_nonbond_params,
+            'bondtypes': self._parse_bondtypes,
+            'angletypes': self._parse_angletypes,
+            'dihedraltypes': self._parse_dihedraltypes
         }
 
         self.writers = {
@@ -569,10 +572,14 @@ class GROMACSTopologyFile(object):
         }
         self.current_charges = {}
         self.atomtypes = {}
+        self.nonbond_params = {}
+        self.bondtypes = {}
+        self.angletypes = {}
+        self.dihedraltypes = {}
         self.header_section = []
         self.defaults = None
-        self.moleculetype = {}
-        self.molecules = {}
+        self.moleculetype = []
+        self.molecules = []
         self.system_name = None
 
     def init(self):
@@ -689,13 +696,19 @@ class GROMACSTopologyFile(object):
                 'bonds',
                 'angles',
                 'dihedrals',
-                'pairs',
-                'cross_bonds',
-                'cross_angles',
-                'cross_dihedrals',
-                'cross_pairs',
+                'pairs'])
+            if self.cross_bonds or self.new_data.get('cross_bonds'):
+                sections.append(('cross_bonds'))
+            if self.cross_angles or self.new_data.get('cross_angles'):
+                sections.append(('cross_angles'))
+            if self.cross_dihedrals or self.new_data.get('cross_dihedrals'):
+                sections.append(('cross_dihedrals'))
+            if self.cross_pairs or self.new_data.get('cross_pairs'):
+                sections.append(('cross_pairs'))
+            sections.extend([
                 'system',
-                'molecules'])
+                'molecules'
+            ])
             self.content = []
             for s in sections:
                 self.content.append('[ %s ]\n' % s)
@@ -740,7 +753,10 @@ class GROMACSTopologyFile(object):
         self.bonds_def[atom_tuple[1]].add(atom_tuple[0])
 
     def _parse_atomtypes(self, raw_data):
-        name, mass, charge, at_type, sigma, epsilon = raw_data
+        if len(raw_data) == 6:
+            name, mass, charge, at_type, sigma, epsilon = raw_data
+        elif len(raw_data) == 7:
+            name, _, mass, charge, at_type, sigma, epsilon = raw_data
         self.atomtypes[name] = {
             'name': name,
             'mass': mass,
@@ -749,6 +765,66 @@ class GROMACSTopologyFile(object):
             'sigma': sigma,
             'epsilon': epsilon
         }
+
+    def _parse_nonbond_params(self, raw_data):
+        i, j = raw_data[:2]
+        k = tuple(sorted(raw_data[:2]))
+        if k in self.nonbond_params:
+            raise RuntimeError('{} already exists, wrong topology'.format(k))
+        self.nonbond_params[k] = {
+            'func': int(raw_data[2]),
+            'params': raw_data[3:]}
+
+    def _parse_bondtypes(self, raw_data):
+        i, j = raw_data[:2]
+        if i not in self.bondtypes:
+            self.bondtypes[i] = {}
+        if j not in self.bondtypes:
+            self.bondtypes[j] = {}
+
+        self.bondtypes[i][j] = {
+            'func': int(raw_data[2]),
+            'params': raw_data[3:]
+        }
+        self.bondtypes[j][i] = self.bondtypes[i][j]
+
+    def _parse_angletypes(self, raw_data):
+        i, j, k = raw_data[:3]
+        if i not in self.angletypes:
+            self.angletypes[i] = {}
+        if j not in self.angletypes[i]:
+            self.angletypes[i][j] = {}
+        if k not in self.angletypes:
+            self.angletypes[k] = {}
+        if j not in self.angletypes[k]:
+            self.angletypes[k][j] = {}
+
+        self.angletypes[i][j][k] = {
+            'func': int(raw_data[3]),
+            'params': raw_data[4:]
+        }
+        self.angletypes[k][j][i] = self.angletypes[i][j][k]
+
+    def _parse_dihedraltypes(self, raw_data):
+        i, j, k, l = raw_data[:4]
+        if i not in self.dihedraltypes:
+            self.dihedraltypes[i] = {}
+        if j not in self.dihedraltypes[i]:
+            self.dihedraltypes[i][j] = {}
+        if k not in self.dihedraltypes[i][j]:
+            self.dihedraltypes[i][j][k] = {}
+        if l not in self.dihedraltypes:
+            self.dihedraltypes[l] = {}
+        if k not in self.dihedraltypes[l]:
+            self.dihedraltypes[l][k] = {}
+        if j not in self.dihedraltypes[l][k]:
+            self.dihedraltypes[l][k][j] = {}
+
+        self.dihedraltypes[i][j][k][l] = {
+            'func': int(raw_data[4]),
+            'params': raw_data[5:]
+        }
+        self.dihedraltypes[l][k][j][i] = self.dihedraltypes[i][j][k][l]
 
     def _parse_atoms(self, raw_data):
         at = TopoAtom()
@@ -806,12 +882,16 @@ class GROMACSTopologyFile(object):
         self.cross_pairs[atom_tuple] = raw_data[2:]
 
     def _parse_moleculetype(self, raw_data):
-        self.moleculetype['name'] = raw_data[0]
-        self.moleculetype['nrexcl'] = raw_data[1]
+        self.moleculetype.append({
+            'name': raw_data[0],
+            'nrexcl': raw_data[1]
+        })
 
     def _parse_molecules(self, raw_data):
-        self.molecules['name'] = raw_data[0]
-        self.molecules['mol'] = raw_data[1]
+        self.molecules.append({
+            'name': raw_data[0],
+            'mol': raw_data[1]
+        })
 
     def _parse_system(self, raw_data):
         self.system_name = raw_data[0]
@@ -886,13 +966,13 @@ class GROMACSTopologyFile(object):
         return []
 
     def _write_moleculetype(self):
-        return ['{name} {nrexcl}'.format(**self.moleculetype)]
+        return ['{name} {nrexcl}\n'.format(**x) for x in self.moleculetype]
 
     def _write_system(self):
         return [self.system_name]
 
     def _write_molecules(self):
-        return ['{name} {mol}'.format(**self.molecules)]
+        return ['{name} {mol}\n'.format(**x) for x in self.molecules]
 
     def _write_default(self, datas=None, check_in=None):  # pylint:disable=R0201
         if check_in is None:
