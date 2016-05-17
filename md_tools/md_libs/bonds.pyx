@@ -2,9 +2,6 @@ import sys
 import numpy as np
 cimport numpy as np
 
-from cython.parallel import parallel, prange
-cimport openmp
-
 cpdef inline double calc_distance_sqr(np.ndarray pos_1, np.ndarray pos_2, np.ndarray box, np.ndarray half_box):
     cdef np.ndarray d = pos_1 - pos_2
     cdef int i
