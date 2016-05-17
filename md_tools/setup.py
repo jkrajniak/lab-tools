@@ -1,5 +1,5 @@
 """
-Copyright (C) 2014 Jakub Krajniak <jkrajniak@gmail.com>
+Copyright (C) 2014,2016 Jakub Krajniak <jkrajniak@gmail.com>
 
 This file is distributed under free software licence:
 you can redistribute it and/or modify it under the terms of the
@@ -33,8 +33,6 @@ class build_ext(_build_ext):
 ext_module = Extension(
     'bonds',
     ['md_libs/bonds.pyx'],
-    extra_compile_args=['-fopenmp', '-march=corei7-avx'],
-    extra_link_args=['-fopenmp', '-march=corei7-avx']
     )
 
 setup(
