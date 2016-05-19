@@ -368,7 +368,7 @@ class GROFile(CoordinateFile):
                     at.position[2]
                 ))
 
-            output.append('%f %f %f' % tuple(self.box))
+            output.append('%f %f %f\n' % tuple(self.box))
             write_file_path = prepare_path(file_name if file_name else self.file_name)
             logger.info('Writing GRO file %s', write_file_path)
             output_file = open(write_file_path, 'w')
@@ -918,6 +918,32 @@ class GROMACSTopologyFile(object):
         for atom_type, values in self.atomtypes.iteritems():
             return_data.append('{name} {mass} {charge} {type} {sigma} {epsilon}'.format(
                 **values))
+        return return_data
+
+    def _write_bondtypes(self):
+        return_data = []
+        for i in self.bondtypes:
+            for j, params in self.bondtypes[i].items():
+                return_data.append('{} {} {} {}'.format(i, j, params['func'], ' '.join(params['params'])))
+        return return_data
+
+    def _write_angletypes(self):
+        return_data = []
+        for i in self.angletypes:
+            for j in self.angletypes[i]:
+                for k, params in self.angletypes[i][j].items():
+                    return_data.append('{} {} {} {} {}'.format(
+                        i, j, k, params['func'], ' '.join(params['params'])))
+        return return_data
+
+    def _write_dihedraltypes(self):
+        return_data = []
+        for i in self.dihedraltypes:
+            for j in self.dihedraltypes[i]:
+                for k in self.dihedraltypes[i][j]:
+                    for l, params in self.dihedraltypes[i][j][k].items():
+                        return_data.append('{} {} {} {} {} {}'.format(
+                            i, j, k, l, params['func'], ' '.join(params['params'])))
         return return_data
 
     def _write_bonds(self):  # pylint:disable=R0201
