@@ -207,6 +207,9 @@ def prepare_hybrid(settings, at_coordinate, args):
     s = settings.cg_molecules[chain_name]
     cg_topol = s.cg_topol
     output_topology.atomtypes = cg_topol.atomtypes
+    for v in output_topology.atomtypes.values():
+        v['type'] = 'V'
+
     output_topology.molecules = cg_topol.molecules
     output_topology.moleculetype = cg_topol.moleculetype
 
@@ -225,7 +228,7 @@ def prepare_hybrid(settings, at_coordinate, args):
         for t, bparams in input_term.items():
             new_t = tuple(map(at_old2new_id.get, t))
             cgs = map(at_cg_id.get, new_t)
-            if cgs[0] != cgs[1]:  # Two different CG beads, cross bond
+            if cgs.count(cgs[0]) != len(cgs):  # Two different CG beads, cross bond
                 output_topology.new_data['cross_{}'.format(name)][new_t] = bparams + [ '; cross at']
             else:
                 output_topology.new_data[name][new_t] = bparams
