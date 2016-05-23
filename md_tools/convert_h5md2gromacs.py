@@ -24,6 +24,7 @@ import warnings
 import xml.etree.ElementTree as etree
 from multiprocessing import Pool
 import functools
+import sys
 
 import h5py
 import networkx
@@ -34,7 +35,7 @@ from md_libs import files_io
 __doc__ = 'Convert H5MD to GROMACS Topology'
 
 
-ValidTypes = collections.namedtuple('ValidTypes', ['bonds', 'angles', 'dihedrals'])
+ValidTypes = collections.namedtuple('ValidTypes', ['bonds', 'angles', 'dihedrals', 'pairs'])
 
 
 def _args():
@@ -114,44 +115,78 @@ def _generate_bonded_terms(g, valid_bonded_types, input_data):
             if len(x) == 3:
                 type_an = tuple(g.node[z]['type_id'] for z in x)
                 r_type_an = tuple(reversed(type_an))
-                if type_an in valid_bonded_types.angles or r_type_an in valid_bonded_types.angles:
-                    angles.add(tuple(x))
+                param = valid_bonded_types.angles.get(type_an, valid_bonded_types.angles.get(r_type_an))
+                if param:
+                    angles.add(tuple(x + [param]))
             elif len(x) == 4:
                 type_an = tuple(g.node[z]['type_id'] for z in x)
                 r_type_an = tuple(reversed(type_an))
-                z = tuple(x)
-                if type_an in valid_bonded_types.dihedrals or r_type_an in valid_bonded_types.dihedrals:
-                    dihedrals.add(z)
-                pairs.add((z[0], z[3]))
+                param = valid_bonded_types.dihedrals.get(type_an)
+                if not param:
+                    param = valid_bonded_types.dihedrals.get(r_type_an)
+                if param:
+                    dihedrals.add(tuple(x + [param]))
+                # Check also pairs.
+                p_type_an = (type_an[0], type_an[3])
+                r_ptype_an = (type_an[3], type_an[0])
+                param  = valid_bonded_types.pairs.get(p_type_an, valid_bonded_types.pairs.get(r_ptype_an))
+                if param:
+                    z = tuple([x[0], x[3], param])
+                    pairs.add(z)
 
     return angles, dihedrals, pairs
 
 
 def generate_bonded_terms(g, valid_bonded_types):
     """Generate bonded terms based on the types defined in itp file, from the graph structure."""
-    # Generate angles
-    bonds = {tuple(sorted(x)) for x in g.edges()}
+    bonds = set()
+
+    for x1, x2 in g.edges():
+        n1 = g.node[x1]
+        n2 = g.node[x2]
+        type_an = (n1['type_id'], n2['type_id'])
+        r_type_an = tuple(reversed(type_an))
+        param = valid_bonded_types.bonds.get(type_an, valid_bonded_types.bonds.get(r_type_an))
+        if param:
+            bonds.add((x1, x2, param))
+        else:
+            raise RuntimeError('Parameters for bond {}-{} not found'.format(x1, x2))
+
     angles = set([])
     dihedrals = set([])
     pairs = set()
 
     f = functools.partial(_generate_bonded_terms, g, valid_bonded_types)
     # Run on multiple CPUs.
-    print('Generate bonded_terms on multi CPUs, it will take a while.')
+    print('Generate bonded_terms on multi CPUs, it will take a while....')
     p = Pool()
-    out_map = p.map(f, [(idx, i) for idx, i in enumerate(g.nodes())])
-    for a, d, p in out_map:
+    input_data = [(idx, i) for idx, i in enumerate(g.nodes())]
+    num_tasks = float(len(input_data))
+    print(num_tasks)
+    out_map = p.imap(f, input_data, chunksize=100)
+    for i, (a, d, p) in enumerate(out_map):
+        sys.stdout.write('done {0:%}\r'.format(i / num_tasks))
         angles.update(a)
         dihedrals.update(d)
         pairs.update(p)
+
     return bonds, angles, dihedrals, pairs
 
 
-def prepare_gromacs_topology(g, settings, itp_file, output_file):
+def prepare_gromacs_topology(g, settings, itp_file, args):
     """Prepares GROMASC topology file. Not everything is supported!"""
+
+    output_file = args.out
 
     output = files_io.GROMACSTopologyFile(output_file)
     output.init()
+
+    output.header_section.append('; GROMACS like topology file\n')
+    output.header_section.append('; parameters:\n')
+    output.header_section.append(';    itp_file: {}\n'.format(args.itp))
+    output.header_section.append(';    options_file: {}\n'.format(args.options))
+    output.header_section.append(';    timeframe: {}\n\n'.format(args.timeframe))
+    output.header_section.append('#include "./{}"\n'.format(itp_file.file_name))
 
     # Write defaults
     output.defaults = {
@@ -175,31 +210,62 @@ def prepare_gromacs_topology(g, settings, itp_file, output_file):
             mass=at_data['mass']
         )
 
-    valid_bond_types = set()
+    valid_bond_types = {}
+    bond_type_params = {}
+    btypeid = 1
     for i in itp_file.bondtypes:
         for j in itp_file.bondtypes[i]:
-            valid_bond_types.add(tuple(map(settings.name2type.get, (i, j))))
-    valid_angle_types = set()
+            bond_type_params[btypeid] = itp_file.bondtypes[i][j]
+            valid_bond_types[tuple(map(settings.name2type.get, (i, j)))] = btypeid
+            valid_bond_types[tuple(map(settings.name2type.get, (j, i)))] = btypeid
+            btypeid += 1
+    angle_type_params = {}
+    atypeid = 1
+    valid_angle_types = {}
     for i in itp_file.angletypes:
         for j in itp_file.angletypes[i]:
             for k in itp_file.angletypes[i][j]:
-                valid_angle_types.add(tuple(map(settings.name2type.get, (i, j, k))))
-                valid_angle_types.add(tuple(map(settings.name2type.get, (j, k, i))))
-    valid_dihedral_types = set()
+                angle_type_params[atypeid] = itp_file.angletypes[i][j][k]
+                valid_angle_types[tuple(map(settings.name2type.get, (i, j, k)))] = atypeid
+                valid_angle_types[tuple(map(settings.name2type.get, (k, j, i)))] = atypeid
+                atypeid += 1
+    dihedral_type_params = {}
+    dtypeid = 1
+    valid_dihedral_types = {}
     for i in itp_file.dihedraltypes:
         for j in itp_file.dihedraltypes[i]:
             for k in itp_file.dihedraltypes[i][j]:
                 for l in itp_file.dihedraltypes[i][j][k]:
-                    valid_dihedral_types.add(tuple(map(settings.name2type.get, (i, j, k, l))))
-                    valid_dihedral_types.add(tuple(map(settings.name2type.get, (l, k, j, i))))
+                    dihedral_type_params[dtypeid] = itp_file.dihedraltypes[i][j][k][l]
+                    valid_dihedral_types[tuple(map(settings.name2type.get, (i, j, k, l)))] = dtypeid
+                    valid_dihedral_types[tuple(map(settings.name2type.get, (l, k, j, i)))] = dtypeid
+                    dtypeid += 1
+
+    pair_type_params = {}
+    ptypeid = 1
+    valid_pair_types = {}
+    for i in itp_file.pairtypes:
+        for j in itp_file.pairtypes[i]:
+            pair_type_params[ptypeid] = itp_file.pairtypes[i][j]
+            valid_pair_types[tuple(map(settings.name2type.get, (i, j)))] = ptypeid
+            valid_pair_types[tuple(map(settings.name2type.get, (j, i)))] = ptypeid
+            ptypeid += 1
 
     bonds, angles, dihedrals, pairs = generate_bonded_terms(
-        g, ValidTypes(valid_bond_types, valid_angle_types, valid_dihedral_types))
+        g, ValidTypes(valid_bond_types, valid_angle_types, valid_dihedral_types, {}))
 
-    output.bonds = {x: [] for x in sorted(bonds)}
-    output.angles = {x: [] for x in sorted(angles)}
-    output.dihedrals = {x: [] for x in sorted(dihedrals)}
-    output.pairs = {x: [] for x in sorted(pairs)}
+    output.bonds = {
+        tuple(x[:2]): [bond_type_params[x[2]]['func']] + bond_type_params[x[2]]['params']
+        for x in bonds}
+    output.angles = {
+        tuple(x[:3]): [angle_type_params[x[3]]['func']] + angle_type_params[x[3]]['params']
+        for x in angles}
+    output.dihedrals = {
+        tuple(x[:4]): [dihedral_type_params[x[4]]['func']] + dihedral_type_params[x[4]]['params']
+        for x in dihedrals}
+    output.pairs = {
+        tuple(x[: 2]): [pair_type_params[x[2]]['func']] + pair_type_params[x[2]]['params']
+        for x in pairs}
 
     for mol_name, mol_prop in settings.molecule_properties.items():
         output.moleculetype.append({
@@ -303,7 +369,7 @@ def main():
     itp_file.read()
 
     prepare_coordinate(args.out_coordinate, structure_graph)
-    prepare_gromacs_topology(structure_graph, settings, itp_file, args.out)
+    prepare_gromacs_topology(structure_graph, settings, itp_file, args)
 
 
 if __name__ == '__main__':
