@@ -174,20 +174,16 @@ def prepare_h5md(h5file, group_name, begin, end, step=None, no_image=False):
 
 class CoordinateFile(object):
     """Coordinate file object."""
-
-    content = None
-    box = None
-    data = None
-    scale_factor = 1.0
-    file = None
-    atoms = {}
-    fragments = collections.defaultdict(dict)
-
     def __init__(self, file_name):
         self.file_name = file_name
         self.title = None
         self.atoms_updated = False
         self.atoms = {}
+        self.file = None
+        self.data = None
+        self.box = None
+        self.content = None
+        self.scale_factor = 1.0
         self.fragments = collections.defaultdict(dict)
 
     def init(self):
@@ -263,9 +259,6 @@ class TopologyFile(object):
 
 
 class GROFile(CoordinateFile):
-    scale_factor = 1.0
-    chains = {}
-
     def read(self):
         """Reads the .gro file and return the atom list.
 
@@ -485,6 +478,7 @@ class PDBFile(CoordinateFile):
 
             output.append('TER')
             output.append('ENDMDL')
+            output.append('\n')
 
             write_file_path = prepare_path(file_name if file_name else self.file_name)
             logger.info('Writing PDB file %s', write_file_path)
@@ -496,7 +490,6 @@ class PDBFile(CoordinateFile):
 
 class GROMACSTopologyFile(object):
     """Very basic representation of topology file."""
-
     def __init__(self, file_name):
         self.file_name = file_name
         self.title = None

@@ -137,6 +137,7 @@ def generate_bonded_terms(g, valid_bonded_types):
 
     f = functools.partial(_generate_bonded_terms, g, valid_bonded_types)
     # Run on multiple CPUs.
+    print('Generate bonded_terms on multi CPUs, it will take a while.')
     p = Pool()
     out_map = p.map(f, [(idx, i) for idx, i in enumerate(g.nodes())])
     for a, d, p in out_map:
@@ -167,7 +168,7 @@ def prepare_gromacs_topology(g, settings, itp_file, output_file):
             atom_id=at_id,
             atom_type=at_data['type_name'],
             chain_idx=at_data['chain_idx'],
-            chain_name=at_data['chain_name'],
+            chain_name=at_data['res_name'],
             name=at_data['name'],
             cgnr=at_id,
             charge=at_data.get('charge', 0.0),
