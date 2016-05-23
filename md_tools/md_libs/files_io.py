@@ -184,6 +184,7 @@ class CoordinateFile(object):
         self.box = None
         self.content = None
         self.scale_factor = 1.0
+        self.chains = {}
         self.fragments = collections.defaultdict(dict)
 
     def init(self):
