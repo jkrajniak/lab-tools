@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 Copyright (C) 2016 Jakub Krajniak <jkrajniak@gmail.com>
 
