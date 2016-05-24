@@ -776,7 +776,7 @@ class GROMACSTopologyFile(object):
                     if raw_data:
                         current_parser(raw_data)  # pylint:disable=E1102
 
-    def write(self, filename=None):
+    def write(self, filename=None, force=False):
         """Updates the topology file.
 
         Args:
@@ -792,7 +792,7 @@ class GROMACSTopologyFile(object):
         skip_lines = False
         section_writer = None
 
-        if self.content is None:
+        if self.content is None or force:
             sections = []
             if self.defaults:
                 sections.append('defaults')

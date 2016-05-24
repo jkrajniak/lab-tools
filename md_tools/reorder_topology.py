@@ -116,7 +116,7 @@ def main():
         in_top.cross_pairs = new_cr_pairs
         in_top.cross_dihedrals = new_cr_dihs
 
-    in_top.write(args.out_top)
+    in_top.write(args.out_top, force=True)
 
 if __name__ == '__main__':
     main()
