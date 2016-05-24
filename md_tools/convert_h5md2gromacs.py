@@ -45,8 +45,8 @@ def _args():
     parser.add_argument('--options', help='Options file', required=True)
     parser.add_argument('--time', dest='timestep', help='Which time frame (in simulation time units)',
                         default=-1, type=float)
-    parser.add_argument('--out', help='GROMACS out file', required=True)
-    parser.add_argument('--out_coordinate', help='.gro file', required=True)
+    parser.add_argument('--out', dest='out', help='GROMACS out file', required=True)
+    parser.add_argument('--outc', dest='out_coordinate', help='.gro file', required=True)
 
     return parser
 
