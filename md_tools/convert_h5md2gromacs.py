@@ -43,7 +43,8 @@ def _args():
     parser.add_argument('--h5', help='Input H5MD file', required=True, dest='h5')
     parser.add_argument('--itp', help='Input ITP file', required=True)
     parser.add_argument('--options', help='Options file', required=True)
-    parser.add_argument('--timeframe', help='Which time frame', default=-1, type=int)
+    parser.add_argument('--time', dest='timestep', help='Which time frame (in simulation time units)',
+                        default=-1, type=float)
     parser.add_argument('--out', help='GROMACS out file', required=True)
     parser.add_argument('--out_coordinate', help='.gro file', required=True)
 
@@ -139,19 +140,6 @@ def _generate_bonded_terms(g, valid_bonded_types, input_data):
 
 def generate_bonded_terms(g, valid_bonded_types):
     """Generate bonded terms based on the types defined in itp file, from the graph structure."""
-    bonds = set()
-
-    for x1, x2 in g.edges():
-        n1 = g.node[x1]
-        n2 = g.node[x2]
-        type_an = (n1['type_id'], n2['type_id'])
-        r_type_an = tuple(reversed(type_an))
-        param = valid_bonded_types.bonds.get(type_an, valid_bonded_types.bonds.get(r_type_an))
-        if param:
-            bonds.add((x1, x2, param))
-        else:
-            raise RuntimeError('Parameters for bond {}-{} not found'.format(x1, x2))
-
     angles = set([])
     dihedrals = set([])
     pairs = set()
@@ -170,7 +158,7 @@ def generate_bonded_terms(g, valid_bonded_types):
         dihedrals.update(d)
         pairs.update(p)
 
-    return bonds, angles, dihedrals, pairs
+    return angles, dihedrals, pairs
 
 
 def prepare_gromacs_topology(g, settings, itp_file, args):
@@ -185,7 +173,7 @@ def prepare_gromacs_topology(g, settings, itp_file, args):
     output.header_section.append('; parameters:\n')
     output.header_section.append(';    itp_file: {}\n'.format(args.itp))
     output.header_section.append(';    options_file: {}\n'.format(args.options))
-    output.header_section.append(';    timeframe: {}\n\n'.format(args.timeframe))
+    output.header_section.append(';    timestep: {}\n\n'.format(args.timestep))
     output.header_section.append('#include "./{}"\n'.format(itp_file.file_name))
 
     # Write defaults
@@ -251,12 +239,25 @@ def prepare_gromacs_topology(g, settings, itp_file, args):
             valid_pair_types[tuple(map(settings.name2type.get, (j, i)))] = ptypeid
             ptypeid += 1
 
-    bonds, angles, dihedrals, pairs = generate_bonded_terms(
+    angles, dihedrals, pairs = generate_bonded_terms(
         g, ValidTypes(valid_bond_types, valid_angle_types, valid_dihedral_types, {}))
 
-    output.bonds = {
-        tuple(x[:2]): [bond_type_params[x[2]]['func']] + bond_type_params[x[2]]['params']
-        for x in bonds}
+    output.bonds = {}
+    for x1, x2 in g.edges():
+        n1 = g.node[x1]
+        n2 = g.node[x2]
+        type_an = (n1['type_id'], n2['type_id'])
+        r_type_an = tuple(reversed(type_an))
+        param_id = valid_bond_types.get(type_an, valid_bond_types.get(r_type_an))
+        if param_id:
+            bparam = bond_type_params[param_id]
+            tmp = [bparam['func']]
+            tmp.extend(bparam['params'])
+            tmp.append(' ;h5md_{}'.format(g.edge[x1][x2]['group_name']))
+            output.bonds[(x1, x2)] = tmp
+        else:
+            raise RuntimeError('Parameters for bond {}-{} not found'.format(x1, x2))
+
     output.angles = {
         tuple(x[:3]): [angle_type_params[x[3]]['func']] + angle_type_params[x[3]]['params']
         for x in angles}
@@ -298,13 +299,13 @@ def prepare_coordinate(file_name, graph):
     out_coordinate.write(force=True)
 
 
-def build_graph(h5, settings, timeframe):
+def build_graph(h5, settings, timestep):
     """Create Graph structure based on the connectivity."""
     g = networkx.Graph()
     # Create box.
     box = h5['/particles/{}/box/edges'.format(settings.h5md_file.group)]
     if 'value' in box:
-        box = box['value'][timeframe]
+        box = box['value'][timestep]
     g.graph['box'] = np.array(box)
     # Create bond list.
     bond_list = []
@@ -312,30 +313,56 @@ def build_graph(h5, settings, timeframe):
         group_path = '/connectivity/{}/'.format(group_name)
         cl = h5[group_path]
         if 'value' in h5[group_path]:
-            cl = cl['value'][timeframe]
-        bond_list.extend([x for x in cl if -1 not in x])
-    g.add_edges_from(bond_list)
+            timesteps = list(cl['time'])
+            if timestep == -1:
+                timestep_position = -1
+            else:
+                timestep_position = timesteps.index(timestep)
+            print('Using time frame index {}, timestep {} of bonds group {}'.format(
+                timestep_position, timestep, group_name))
+            cl = cl['value'][timestep_position]
+        for x1, x2 in cl:
+            if x1 != -1 and x2 != -1:
+                g.add_edge(x1, x2, group_name=group_name)
+
     # Get types and generate the names of atoms.
+    positions_timesteps = list(h5['/particles/{}/position/time'.format(settings.h5md_file.group)])
+    if timestep == -1:
+        positions_index = -1
+    else:
+        positions_index = positions_timesteps.index(timestep)
+    print('Build from time frame index {} of timestep {}'.format(positions_index, timestep))
     type_list = np.array([
-        x for x in h5['/particles/{}/species/value'.format(settings.h5md_file.group)][timeframe] if x != -1
+        x for x in h5['/particles/{}/species/value'.format(settings.h5md_file.group)][positions_index]
+        if x != -1
         ])
     positions = np.array([
-        x for x in h5['/particles/{}/position/value'.format(settings.h5md_file.group)][timeframe]
+        x for x in h5['/particles/{}/position/value'.format(settings.h5md_file.group)][positions_index]
     ])
     mass = np.array([
-        x for x in h5['/particles/{}/mass/value'.format(settings.h5md_file.group)][timeframe]
+        x for x in h5['/particles/{}/mass/value'.format(settings.h5md_file.group)][positions_index]
     ])
     ids = np.array([
-        x for x in h5['/particles/{}/id/value'.format(settings.h5md_file.group)][timeframe] if x != -1
+        x for x in h5['/particles/{}/id/value'.format(settings.h5md_file.group)][positions_index]
+        if x != -1
     ])
     for i, pid in enumerate(ids):
         at_type = type_list[i]
-        g.node[pid]['type_id'] = at_type
         type_name = settings.type2chain[at_type]
-        g.node[pid]['type_name'] = type_name.type_name
-        g.node[pid]['chain_name'] = type_name.chain_name
-        g.node[pid]['position'] = positions[i]
-        g.node[pid]['mass'] = mass[i]
+        if pid not in g.node:
+            g.add_node(
+                pid,
+                type_id=at_type,
+                type_name=type_name.type_name,
+                chain_name=type_name.chain_name,
+                position=positions[i],
+                mass=mass[i])
+        else:
+            g.node[pid]['type_id'] = at_type
+            g.node[pid]['type_name'] = type_name.type_name
+            g.node[pid]['chain_name'] = type_name.chain_name
+            g.node[pid]['position'] = positions[i]
+            g.node[pid]['mass'] = mass[i]
     # Assign node name based on the sequence in given molecule.
     total_size = len(ids)
     pidx = 0
@@ -363,7 +390,7 @@ def main():
 
     h5 = h5py.File(args.h5, 'r')
     settings = read_settings(args.options)
-    structure_graph = build_graph(h5, settings, args.timeframe)
+    structure_graph = build_graph(h5, settings, args.timestep)
 
     itp_file = files_io.GROMACSTopologyFile(args.itp)
     itp_file.read()
