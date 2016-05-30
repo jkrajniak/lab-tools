@@ -24,6 +24,7 @@ import warnings
 import xml.etree.ElementTree as etree
 from multiprocessing import Pool
 import functools
+import itertools
 import sys
 
 import h5py
@@ -106,11 +107,12 @@ def _generate_bonded_terms(g, valid_bonded_types, input_data):
     # Generate angles
     angles = set([])
     dihedrals = set([])
+    improper_dih = set([])
     pairs = set()
     nodes = g.nodes()
     idx, i = input_data
     for j in nodes[idx + 1:]:
-        # Generate angles
+        # Generate angles, dihedrals, pairs
         path_i_j = networkx.all_simple_paths(g, i, j, 4)
         for x in path_i_j:
             if len(x) == 3:
@@ -135,6 +137,22 @@ def _generate_bonded_terms(g, valid_bonded_types, input_data):
                     z = tuple([x[0], x[3], param])
                     pairs.add(z)
 
+    # Generate improper dihedrals, assume that in the definition
+    # the first atom type is a central atom and iterate over 1-2 neighbours (like in LAMMPS)
+    nb_i = g.edge[i]
+    r_ids = [i] + nb_i.keys()
+    if len(r_ids) > 3:
+        # Scan through all permutations of given atom ids
+        for id_perm in itertools.permutations(r_ids, 4):
+            type_an = tuple(g.node[z]['type_id'] for z in id_perm)
+            r_type_an = tuple(reversed(type_an))
+            param = valid_bonded_types.dihedrals.get(type_an)
+            if not param:
+                param = valid_bonded_types.dihedrals.get(r_type_an)
+            if param:
+                print type_an, id_perm
+                dihedrals.add(tuple(list(id_perm) + [param]))
+
     return angles, dihedrals, pairs
 
 
@@ -147,16 +165,20 @@ def generate_bonded_terms(g, valid_bonded_types):
     f = functools.partial(_generate_bonded_terms, g, valid_bonded_types)
     # Run on multiple CPUs.
     print('Generate bonded_terms on multi CPUs, it will take a while....')
-    p = Pool()
+    #p = Pool()
     input_data = [(idx, i) for idx, i in enumerate(g.nodes())]
     num_tasks = float(len(input_data))
-    print(num_tasks)
-    out_map = p.imap(f, input_data, chunksize=100)
+    #out_map = p.imap(f, input_data, chunksize=100)
+    out_map = map(f, input_data)
     for i, (a, d, p) in enumerate(out_map):
-        sys.stdout.write('done {0:%}\r'.format(i / num_tasks))
+        #sys.stdout.write('done {0:%}\r'.format(i / num_tasks))
         angles.update(a)
         dihedrals.update(d)
         pairs.update(p)
+
+    print('Generated:')
+    print('Angles: {}'.format(len(angles)))
+    print('Dihedrals: {}'.format(len(dihedrals)))
 
     return angles, dihedrals, pairs
 
