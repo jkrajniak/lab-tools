@@ -150,7 +150,6 @@ def _generate_bonded_terms(g, valid_bonded_types, input_data):
             if not param:
                 param = valid_bonded_types.dihedrals.get(r_type_an)
             if param:
-                print type_an, id_perm
                 dihedrals.add(tuple(list(id_perm) + [param]))
 
     return angles, dihedrals, pairs
@@ -165,13 +164,12 @@ def generate_bonded_terms(g, valid_bonded_types):
     f = functools.partial(_generate_bonded_terms, g, valid_bonded_types)
     # Run on multiple CPUs.
     print('Generate bonded_terms on multi CPUs, it will take a while....')
-    #p = Pool()
+    p = Pool()
     input_data = [(idx, i) for idx, i in enumerate(g.nodes())]
     num_tasks = float(len(input_data))
-    #out_map = p.imap(f, input_data, chunksize=100)
-    out_map = map(f, input_data)
+    out_map = p.imap(f, input_data, chunksize=min(250, num_tasks))
     for i, (a, d, p) in enumerate(out_map):
-        #sys.stdout.write('done {0:%}\r'.format(i / num_tasks))
+        sys.stdout.write('done {0:%}\r'.format(i / num_tasks))
         angles.update(a)
         dihedrals.update(d)
         pairs.update(p)
