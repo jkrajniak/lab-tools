@@ -167,7 +167,7 @@ def generate_bonded_terms(g, valid_bonded_types):
     p = Pool()
     input_data = [(idx, i) for idx, i in enumerate(g.nodes())]
     num_tasks = float(len(input_data))
-    out_map = p.imap(f, input_data, chunksize=min(250, num_tasks))
+    out_map = p.map(f, input_data, chunksize=min(250, num_tasks))
     for a, d, p in out_map:
         angles.update(a)
         dihedrals.update(d)
