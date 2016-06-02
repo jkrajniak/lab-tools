@@ -912,7 +912,6 @@ class GROMACSTopologyFile(object):
             'func': int(raw_data[2]),
             'params': raw_data[3:]
         }
-        self.bondtypes[j][i] = self.bondtypes[i][j]
 
     def _parse_angletypes(self, raw_data):
         i, j, k = raw_data[:3]
@@ -929,7 +928,6 @@ class GROMACSTopologyFile(object):
             'func': int(raw_data[3]),
             'params': raw_data[4:]
         }
-        self.angletypes[k][j][i] = self.angletypes[i][j][k]
 
     def _parse_dihedraltypes(self, raw_data):
         i, j, k, l = raw_data[:4]
@@ -950,7 +948,6 @@ class GROMACSTopologyFile(object):
             'func': int(raw_data[4]),
             'params': raw_data[5:]
         }
-        self.dihedraltypes[l][k][j][i] = self.dihedraltypes[i][j][k][l]
 
     def _parse_atoms(self, raw_data):
         at = TopoAtom()

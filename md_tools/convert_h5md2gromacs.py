@@ -107,7 +107,6 @@ def _generate_bonded_terms(g, valid_bonded_types, input_data):
     # Generate angles
     angles = set([])
     dihedrals = set([])
-    improper_dih = set([])
     pairs = set()
     nodes = g.nodes()
     idx, i = input_data
@@ -139,18 +138,19 @@ def _generate_bonded_terms(g, valid_bonded_types, input_data):
 
     # Generate improper dihedrals, assume that in the definition
     # the first atom type is a central atom and iterate over 1-2 neighbours (like in LAMMPS)
-    nb_i = g.edge[i]
-    r_ids = [i] + nb_i.keys()
-    if len(r_ids) > 3:
+    nb_i = g.edge[i].keys()
+    if len(nb_i) > 2:
         # Scan through all permutations of given atom ids
-        for id_perm in itertools.permutations(r_ids, 4):
-            type_an = tuple(g.node[z]['type_id'] for z in id_perm)
+        for id_perm in itertools.permutations(nb_i, 3):
+            r_ids = [i, id_perm[0], id_perm[1], id_perm[2]]
+            type_an = tuple(g.node[z]['type_id'] for z in r_ids)
             r_type_an = tuple(reversed(type_an))
             param = valid_bonded_types.dihedrals.get(type_an)
             if not param:
                 param = valid_bonded_types.dihedrals.get(r_type_an)
             if param:
-                dihedrals.add(tuple(list(id_perm) + [param]))
+                dihedrals.add(tuple(list(r_ids) + [param]))
+                break
 
     return angles, dihedrals, pairs
 
@@ -225,7 +225,6 @@ def prepare_gromacs_topology(g, settings, itp_file, args):
         for j in itp_file.bondtypes[i]:
             bond_type_params[btypeid] = itp_file.bondtypes[i][j]
             valid_bond_types[tuple(map(settings.name2type.get, (i, j)))] = btypeid
-            valid_bond_types[tuple(map(settings.name2type.get, (j, i)))] = btypeid
             btypeid += 1
     angle_type_params = {}
     atypeid = 1
@@ -235,7 +234,6 @@ def prepare_gromacs_topology(g, settings, itp_file, args):
             for k in itp_file.angletypes[i][j]:
                 angle_type_params[atypeid] = itp_file.angletypes[i][j][k]
                 valid_angle_types[tuple(map(settings.name2type.get, (i, j, k)))] = atypeid
-                valid_angle_types[tuple(map(settings.name2type.get, (k, j, i)))] = atypeid
                 atypeid += 1
     dihedral_type_params = {}
     dtypeid = 1
@@ -246,7 +244,6 @@ def prepare_gromacs_topology(g, settings, itp_file, args):
                 for l in itp_file.dihedraltypes[i][j][k]:
                     dihedral_type_params[dtypeid] = itp_file.dihedraltypes[i][j][k][l]
                     valid_dihedral_types[tuple(map(settings.name2type.get, (i, j, k, l)))] = dtypeid
-                    valid_dihedral_types[tuple(map(settings.name2type.get, (l, k, j, i)))] = dtypeid
                     dtypeid += 1
 
     pair_type_params = {}
@@ -256,12 +253,13 @@ def prepare_gromacs_topology(g, settings, itp_file, args):
         for j in itp_file.pairtypes[i]:
             pair_type_params[ptypeid] = itp_file.pairtypes[i][j]
             valid_pair_types[tuple(map(settings.name2type.get, (i, j)))] = ptypeid
-            valid_pair_types[tuple(map(settings.name2type.get, (j, i)))] = ptypeid
             ptypeid += 1
 
+    # Generate bonded terms;
     angles, dihedrals, pairs = generate_bonded_terms(
         g, ValidTypes(valid_bond_types, valid_angle_types, valid_dihedral_types, {}))
 
+    # Write output.
     output.bonds = {}
     for x1, x2 in g.edges():
         n1 = g.node[x1]
@@ -278,6 +276,8 @@ def prepare_gromacs_topology(g, settings, itp_file, args):
         else:
             raise RuntimeError('Parameters for bond {}-{} not found'.format(x1, x2))
 
+    print('Bonds: {}'.format(len(output.bonds)))
+
     output.angles = {
         tuple(x[:3]): [angle_type_params[x[3]]['func']] + angle_type_params[x[3]]['params']
         for x in angles}
@@ -285,7 +285,7 @@ def prepare_gromacs_topology(g, settings, itp_file, args):
         tuple(x[:4]): [dihedral_type_params[x[4]]['func']] + dihedral_type_params[x[4]]['params']
         for x in dihedrals}
     output.pairs = {
-        tuple(x[: 2]): [pair_type_params[x[2]]['func']] + pair_type_params[x[2]]['params']
+        tuple(x[:2]): [pair_type_params[x[2]]['func']] + pair_type_params[x[2]]['params']
         for x in pairs}
 
     for mol_name, mol_prop in settings.molecule_properties.items():
