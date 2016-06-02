@@ -166,8 +166,7 @@ def generate_bonded_terms(g, valid_bonded_types):
     print('Generate bonded_terms on multi CPUs, it will take a while....')
     p = Pool()
     input_data = [(idx, i) for idx, i in enumerate(g.nodes())]
-    num_tasks = float(len(input_data))
-    out_map = p.map(f, input_data)
+    out_map = map(f, input_data)
     for a, d, p in out_map:
         angles.update(a)
         dihedrals.update(d)
@@ -338,7 +337,7 @@ def build_graph(h5, settings, timestep):
             else:
                 timestep_position = timesteps.index(timestep)
             print('Using time frame index {}, timestep {} of bonds group {}'.format(
-                timestep_position, timestep, group_name))
+                timesteps[timestep_position], timestep, group_name))
             cl = cl['value'][timestep_position]
         for x1, x2 in cl:
             if x1 != -1 and x2 != -1:
@@ -350,7 +349,7 @@ def build_graph(h5, settings, timestep):
         positions_index = -1
     else:
         positions_index = positions_timesteps.index(timestep)
-    print('Build from time frame index {} of timestep {}'.format(positions_index, timestep))
+    print('Build from time frame index {} of timestep {}'.format(positions_index, positions_timesteps[positions_index]))
     type_list = np.array([
         x for x in h5['/particles/{}/species/value'.format(settings.h5md_file.group)][positions_index]
         if x != -1
