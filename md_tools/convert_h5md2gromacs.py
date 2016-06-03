@@ -108,7 +108,7 @@ def _generate_bonded_terms(g, valid_bonded_types, input_data):
     angles = set([])
     dihedrals = set([])
     pairs = set()
-    nodes = g.nodes()
+    nodes = list(g.nodes())
     idx, i = input_data
     for j in nodes[idx + 1:]:
         # Generate angles, dihedrals, pairs
@@ -166,7 +166,7 @@ def generate_bonded_terms(g, valid_bonded_types):
     print('Generate bonded_terms on multi CPUs, it will take a while....')
     p = Pool()
     input_data = [(idx, i) for idx, i in enumerate(g.nodes())]
-    out_map = map(f, input_data)
+    out_map = p.imap(f, input_data)
     for a, d, p in out_map:
         angles.update(a)
         dihedrals.update(d)

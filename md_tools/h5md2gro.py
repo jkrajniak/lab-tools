@@ -34,33 +34,29 @@ def _args():
     parser.add_argument('--unfolded', action='store_true', default=False)
     parser.add_argument('--valid_species')
     parser.add_argument('--scale_factor', default=1.0, type=float)
+    parser.add_argument('--store_trajectory', action='store_true', default=False,
+                        help='Store whole trajectory')
+    parser.add_argument('-b', help='Begin of trajectory', default=0, type=int)
+    parser.add_argument('-e', help='End of trajectory', default=-1, type=int)
     return parser.parse_args()
 
 
-def main():
-    args = _args()
-
-    h5 = h5py.File(args.h5)
-    in_gro = files_io.GROFile(args.input_gro)
-    in_gro.scale_factor = args.scale_factor
-    in_gro.read()
-
-    pos = h5['/particles/{}/position/value'.format(args.group)][args.frame]
-    try:
-        species = h5['/particles/{}/species/value'.format(args.group)][args.frame]
-    except:
-        species = h5['/particles/{}/species'.format(args.group)][args.frame]
-
+def write_frame(args, in_gro, h5, frame, append):
+    pos = h5['/particles/{}/position/value'.format(args.group)][frame]
     valid_species = None
     if args.valid_species:
+        try:
+            species = h5['/particles/{}/species/value'.format(args.group)][frame]
+        except:
+            species = h5['/particles/{}/species'.format(args.group)][frame]
         valid_species = set(map(int, args.valid_species.split(',')))
 
-    images = h5['/particles/{}/image/value'.format(args.group)][args.frame]
+    images = h5['/particles/{}/image/value'.format(args.group)][frame]
     print images
     try:
-        box = np.array(h5['/particles/{}/box/edges/value'.format(args.group)][args.frame])
+        box = np.array(h5['/particles/{}/box/edges/value'.format(args.group)][frame])
     except:
-        box = np.array(h5['/particles/{}/box/edges'.format(args.group)][args.frame])
+        box = np.array(h5['/particles/{}/box/edges'.format(args.group)][frame])
     print('Box: {}'.format(box))
 
     ids = sorted(in_gro.atoms)
@@ -71,12 +67,36 @@ def main():
         if valid_species is None or species[pid] in valid_species:
             at_data = in_gro.atoms[ids[ppid]]
             if args.unfolded:
-                in_gro.atoms[ids[ppid]] = at_data._replace(position = p + images[pid]*box)
+                in_gro.atoms[ids[ppid]] = at_data._replace(position=p + images[pid] * box)
             else:
                 in_gro.atoms[ids[ppid]].position = at_data._replace(position=p)
             ppid += 1
-    in_gro.write(args.output, force=True)
+    in_gro.write(args.output, force=True, append=append)
 
+def main():
+    args = _args()
+
+    h5 = h5py.File(args.h5)
+    in_gro = files_io.GROFile(args.input_gro)
+    in_gro.scale_factor = args.scale_factor
+    in_gro.read()
+
+    # Get the number of frames
+    pos = h5['/particles/{}/position/value'.format(args.group)]
+    nr_frames = pos.shape[0]
+    print('Total number of frames: {}'.format(nr_frames))
+    if args.store_trajectory:
+        if args.e == -1:
+            end_frame = nr_frames
+        elif args.e > nr_frames:
+            raise RuntimeError('wrong end frame {} > {}'.format(args.e, nf_frames))
+        elif args.b > args.e:
+            raise RuntimeError('Begin frame > end frame')
+        frames = range(args.b, end_frame)
+        for fr in frames:
+            write_frame(args, in_gro, h5, fr, append=True)
+    else:
+        write_frame(args, in_gro, h5, args.frame, append=False)
 
 if __name__ == '__main__':
     main()

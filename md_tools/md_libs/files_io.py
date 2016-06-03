@@ -362,12 +362,13 @@ class GROFile(CoordinateFile):
             output_gro.atoms = copy.copy(input_gro.atoms)
         return output_gro
 
-    def write(self, file_name=None, force=False):
+    def write(self, file_name=None, force=False, append=False):
         """Writes the content to the output file.
 
         Args:
           file_name: The new file name, otherwise the old one will be used.
           force: Force to save even if any atoms were not updated.
+          append: If set to true then the frame will be added to previouse one in the file.
         """
 
         if self.atoms_updated or force:
@@ -393,11 +394,15 @@ class GROFile(CoordinateFile):
                     ))
 
             output.append('%f %f %f\n' % tuple(self.box))
-            write_file_path = prepare_path(file_name if file_name else self.file_name)
+            if append:
+                write_file_path = file_name if file_name else self.file_name
+            else:
+                write_file_path = prepare_path(file_name if file_name else self.file_name)
             logger.info('Writing GRO file %s', write_file_path)
-            output_file = open(write_file_path, 'w')
+            output_file = open(write_file_path, 'a+' if append else 'w')
             output_file.writelines('\n'.join(output))
-            output_file.write('\n')
+            if not append:
+                output_file.write('\n')
             output_file.close()
             self.atoms_updated = False
 
