@@ -52,12 +52,11 @@ def write_frame(args, in_gro, h5, frame, append):
         valid_species = set(map(int, args.valid_species.split(',')))
 
     images = h5['/particles/{}/image/value'.format(args.group)][frame]
-    print images
+    print(frame)
     try:
         box = np.array(h5['/particles/{}/box/edges/value'.format(args.group)][frame])
     except:
         box = np.array(h5['/particles/{}/box/edges'.format(args.group)][frame])
-    print('Box: {}'.format(box))
 
     ids = sorted(in_gro.atoms)
     ppid = 0
@@ -69,8 +68,10 @@ def write_frame(args, in_gro, h5, frame, append):
             if args.unfolded:
                 in_gro.atoms[ids[ppid]] = at_data._replace(position=p + images[pid] * box)
             else:
-                in_gro.atoms[ids[ppid]].position = at_data._replace(position=p)
+                in_gro.atoms[ids[ppid]] = at_data._replace(position=p)
             ppid += 1
+    time_frame = h5['/particles/{}/position/time'.format(args.group)][frame]
+    in_gro.title = 'XXX molecule, t={}'.format(time_frame)
     in_gro.write(args.output, force=True, append=append)
 
 def main():

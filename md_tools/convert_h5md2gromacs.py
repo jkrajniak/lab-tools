@@ -25,7 +25,6 @@ import xml.etree.ElementTree as etree
 from multiprocessing import Pool
 import functools
 import itertools
-import sys
 
 import h5py
 import networkx
@@ -192,7 +191,8 @@ def prepare_gromacs_topology(g, settings, itp_file, args):
     output.header_section.append(';    itp_file: {}\n'.format(args.itp))
     output.header_section.append(';    options_file: {}\n'.format(args.options))
     output.header_section.append(';    timestep: {}\n\n'.format(args.timestep))
-    output.header_section.append('#include "./{}"\n'.format(itp_file.file_name))
+
+    # output.header_section.append('#include "./{}"\n'.format(itp_file.file_name))
 
     # Write defaults
     output.defaults = {
@@ -204,6 +204,12 @@ def prepare_gromacs_topology(g, settings, itp_file, args):
     }
     warnings.warn('Warning, [ defaults ] section is set to {}'.format(output.defaults))
 
+    output.atomtypes = itp_file.atomtypes.copy()
+    output.bondtypes = itp_file.bondtypes.copy()
+    output.angletypes = itp_file.angletypes.copy()
+    output.dihedraltypes = itp_file.dihedraltypes.copy()
+    output.pairtypes = itp_file.pairtypes.copy()
+
     for at_id, at_data in g.node.items():
         output.atoms[at_id] = files_io.TopoAtom(
             atom_id=at_id,
@@ -213,8 +219,7 @@ def prepare_gromacs_topology(g, settings, itp_file, args):
             name=at_data['name'],
             cgnr=at_id,
             charge=at_data.get('charge', 0.0),
-            mass=at_data['mass']
-        )
+            mass=at_data['mass'])
 
     valid_bond_types = {}
     bond_type_params = {}
