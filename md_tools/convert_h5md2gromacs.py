@@ -199,14 +199,17 @@ def prepare_gromacs_topology(g, settings, itp_file, args):
     # output.header_section.append('#include "./{}"\n'.format(itp_file.file_name))
 
     # Write defaults
-    output.defaults = {
-        'nbfunc': 1,
-        'comb-rule': 1,
-        'gen-pairs': 'no',
-        'fudgeLJ': 0.0,
-        'fudgeQQ': 0.0
-    }
-    warnings.warn('Warning, [ defaults ] section is set to {}'.format(output.defaults))
+    if itp_file.defaults:
+        output.defaults = itp_file.defaults
+    else:
+        output.defaults = {
+            'nbfunc': 1,
+            'comb-rule': 1,
+            'gen-pairs': 'no',
+            'fudgeLJ': 0.0,
+            'fudgeQQ': 0.0
+        }
+        warnings.warn('Warning, [ defaults ] section is set to {}'.format(output.defaults))
 
     output.atomtypes = itp_file.atomtypes.copy()
     output.bondtypes = itp_file.bondtypes.copy()
@@ -281,7 +284,8 @@ def prepare_gromacs_topology(g, settings, itp_file, args):
             tmp.append(' ;h5md_{}'.format(g.edge[x1][x2]['group_name']))
             output.bonds[(x1, x2)] = tmp
         else:
-            raise RuntimeError('Parameters for bond {}-{} not found'.format(x1, x2))
+            raise RuntimeError('Parameters for bond {}-{} not found (types: {}-{})'.format(
+                x1, x2, n1['type_id'], n2['type_id']))
 
     print('Bonds: {}'.format(len(output.bonds)))
 
@@ -342,9 +346,10 @@ def build_graph(h5, settings, timestep):
         box = box['value'][timestep_box]
     g.graph['box'] = np.array(box)
     # Create bond list.
-    bond_list = []
     for group_name in settings.h5md_file.connection_groups:
         group_path = '/connectivity/{}/'.format(group_name)
+        if group_name not in h5['/connectivity/']:
+            raise RuntimeError('Bond list {} not found'.format(group_name))
         cl = h5[group_path]
         if 'value' in h5[group_path]:
             timesteps = list(cl['time'])
