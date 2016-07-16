@@ -1,2 +1,5 @@
 import files_io
-import bonds
+try:
+    import bonds
+except ImportError:
+    print(' No bonds module')
