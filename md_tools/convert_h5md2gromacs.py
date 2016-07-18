@@ -47,6 +47,7 @@ def _args():
                         default=-1, type=float)
     parser.add_argument('--out', dest='out', help='GROMACS out file', required=True)
     parser.add_argument('--outc', dest='out_coordinate', help='.gro file', required=True)
+    parser.add_argument('--nt', default=None, type=int, help='Number of process to run')
 
     return parser
 
@@ -154,7 +155,7 @@ def _generate_bonded_terms(g, valid_bonded_types, input_data):
     return angles, dihedrals, pairs
 
 
-def generate_bonded_terms(g, valid_bonded_types):
+def generate_bonded_terms(args, g, valid_bonded_types):
     """Generate bonded terms based on the types defined in itp file, from the graph structure."""
     angles = set([])
     dihedrals = set([])
@@ -163,7 +164,10 @@ def generate_bonded_terms(g, valid_bonded_types):
     f = functools.partial(_generate_bonded_terms, g, valid_bonded_types)
     # Run on multiple CPUs.
     print('Generate bonded_terms on multi CPUs, it will take a while....')
-    p = Pool()
+    if args.nt:
+        p = Pool(args.nt)
+    else:
+        p = Pool()
     input_data = [(idx, i) for idx, i in enumerate(g.nodes())]
     out_map = p.imap(f, input_data)
     for a, d, p in out_map:
@@ -262,7 +266,7 @@ def prepare_gromacs_topology(g, settings, itp_file, args):
             ptypeid += 1
 
     # Generate bonded terms;
-    angles, dihedrals, pairs = generate_bonded_terms(
+    angles, dihedrals, pairs = generate_bonded_terms(args,
         g, ValidTypes(valid_bond_types, valid_angle_types, valid_dihedral_types, {}))
 
     # Write output.
@@ -332,7 +336,14 @@ def build_graph(h5, settings, timestep):
     # Create box.
     box = h5['/particles/{}/box/edges'.format(settings.h5md_file.group)]
     if 'value' in box:
-        box = box['value'][timestep]
+        timesteps = list(box['time'])
+        if timestep == -1:
+            timestep_box = -1
+        else:
+            timestep_box = timesteps.index(timestep)
+        print('Using time frame index {}, timestep {} of box'.format(
+            timesteps[timestep_box], timestep))
+        box = box['value'][timestep_box]
     g.graph['box'] = np.array(box)
     # Create bond list.
     for group_name in settings.h5md_file.connection_groups:
@@ -352,7 +363,7 @@ def build_graph(h5, settings, timestep):
         for x1, x2 in cl:
             if x1 != -1 and x2 != -1:
                 g.add_edge(x1, x2, group_name=group_name)
-
+    print('Found {} bonds'.format(g.number_of_edges()))
     # Get types and generate the names of atoms.
     positions_timesteps = list(h5['/particles/{}/position/time'.format(settings.h5md_file.group)])
     if timestep == -1:
