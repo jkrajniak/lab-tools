@@ -45,7 +45,7 @@ def _args():
     parser.add_argument('--options', help='Options file', required=True)
     parser.add_argument('--time', dest='timestep', help='Which time frame (in simulation time units)',
                         default=-1, type=float)
-    parser.add_argument('--out', dest='out', help='GROMACS out file', required=True)
+    parser.add_argument('--out', dest='out', help='GROMACS topology out file', required=True)
     parser.add_argument('--outc', dest='out_coordinate', help='.gro file', required=True)
     parser.add_argument('--nt', default=None, type=int, help='Number of process to run')
 
@@ -427,7 +427,8 @@ def build_graph(h5, settings, timestep):
         for ni, i in enumerate(range(pidx, pidx+mol_size)):
             g.node[ids[i]]['name'] = name_seq.atom_names[ni]
             g.node[ids[i]]['res_name'] = name_seq.res_name
-            g.node[ids[i]]['chain_idx'] = chain_idx
+            if 'chain_idx' not in g.node[ids[i]]:
+                g.node[ids[i]]['chain_idx'] = chain_idx
         total_size -= mol_size
         pidx += mol_size
         chain_idx += 1
