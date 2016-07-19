@@ -385,6 +385,15 @@ def build_graph(h5, settings, timestep):
         x for x in h5['/particles/{}/id/value'.format(settings.h5md_file.group)][positions_index]
         if x != -1
     ])
+    # Gets resid directly from h5md
+    res_ids = None
+    if 'res_id' in h5['/particles/{}'.format(settings.h5md_file.group)]:
+        res_id_g = h5['/particles/{}/res_id'.format(settings.h5md_file.group)]
+        if 'value' in res_id_g:
+            res_ids = [x for x in res_id_g['value'][positions_index] if x != -1]
+        else:
+            res_ids = [x for x in res_id_g if x != -1]
+
     for i, pid in enumerate(ids):
         at_type = type_list[i]
         type_name = settings.type2chain[at_type]
@@ -402,10 +411,12 @@ def build_graph(h5, settings, timestep):
             g.node[pid]['chain_name'] = type_name.chain_name
             g.node[pid]['position'] = positions[i]
             g.node[pid]['mass'] = mass[i]
+        if res_ids:
+            g.node[pid]['chain_idx'] = res_ids[i]
     # Assign node name based on the sequence in given molecule.
     total_size = len(ids)
     pidx = 0
-    chain_idx = collections.defaultdict(int)
+    chain_idx = 1
     while total_size > 0:
         pid = ids[pidx]
         node = g.node[pid]
@@ -417,9 +428,10 @@ def build_graph(h5, settings, timestep):
         for ni, i in enumerate(range(pidx, pidx+mol_size)):
             g.node[ids[i]]['name'] = name_seq.atom_names[ni]
             g.node[ids[i]]['res_name'] = name_seq.res_name
-            g.node[ids[i]]['chain_idx'] = chain_idx[node['chain_name']]
+            g.node[ids[i]]['chain_idx'] = chain_idx
         total_size -= mol_size
         pidx += mol_size
+        chain_idx += 1
 
     return g
 
