@@ -424,7 +424,6 @@ def build_graph(h5, settings, timestep):
         # Chunk of types to match with appropriate sequence
         type_chunk = tuple(type_list[pidx:pidx+mol_size])
         name_seq = settings.name_seq[node['chain_name']][type_chunk]
-        chain_idx[node['chain_name']] += 1
         for ni, i in enumerate(range(pidx, pidx+mol_size)):
             g.node[ids[i]]['name'] = name_seq.atom_names[ni]
             g.node[ids[i]]['res_name'] = name_seq.res_name
