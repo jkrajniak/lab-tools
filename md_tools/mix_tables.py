@@ -17,8 +17,10 @@ def _args():
     parser.add_argument('--out_table', required=True, help='Output table')
     parser.add_argument('--scaling', type=float, default=0.5)
     parser.add_argument('--constant', type=float, default=0.0)
-    parser.add_argument('--mix_type', type=int, default=0, choices=[0, 1], 
+    parser.add_argument('--mix_type', type=int, default=0, choices=[0, 1],
                         help='coupling type, 0 for arithmetic, 1 for geometric')
+    parser.add_argument('--output_type', default='espp', choices=['espp', 'gromacs'],
+                        help='Define the output format')
 
     args = parser.parse_args()
     return args
@@ -46,6 +48,16 @@ def convertGromacsESPP(xvg):
     output_tab[:, 1] = e
     output_tab[:, 2] = f
     return output_tab
+
+
+def convertEsppToGromacs(espp):
+    output_table = np.zeros((espp.shape[0], 7))
+
+    output_table[:, 0] = espp[:, 0]
+    output_table[:, 5] = espp[:, 1]
+    output_table[:, 6] = espp[:, 2]
+
+    return output_table
 
 
 def mix_arithmetic(tab1, tab2, coupling):
@@ -116,6 +128,9 @@ def main():
         mixed_table = mix_geometric(u1, u2, args.scaling, args.constant)
     else:
         raise RuntimeError('Unknown mixing type')
+
+    if args.output_type == 'gromacs':
+        mixed_table = convertEsppToGromacs(mixed_table)
 
     print('Saved {}'.format(args.out_table))
     np.savetxt(
