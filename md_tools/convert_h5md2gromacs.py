@@ -45,9 +45,9 @@ def _args():
     parser.add_argument('--options', help='Options file', required=True)
     parser.add_argument('--time', dest='timestep', help='Which time frame (in simulation time units)',
                         default=-1, type=float)
-    parser.add_argument('--out', dest='out', help='GROMACS topology out file', required=True)
-    parser.add_argument('--outc', dest='out_coordinate', help='.gro file', required=True)
-    parser.add_argument('--nt', default=None, type=int, help='Number of process to run')
+    parser.add_argument('--out', '--out_topol', dest='out', help='GROMACS topology out file', required=True)
+    parser.add_argument('--outc', '--out_coordinate', dest='out_coordinate', help='.gro file', required=True)
+    parser.add_argument('--nt', default=None, type=int, help='Number of process to run.')
 
     return parser
 
@@ -194,7 +194,9 @@ def prepare_gromacs_topology(g, settings, itp_file, args):
     output.header_section.append('; parameters:\n')
     output.header_section.append(';    itp_file: {}\n'.format(args.itp))
     output.header_section.append(';    options_file: {}\n'.format(args.options))
-    output.header_section.append(';    timestep: {}\n\n'.format(args.timestep))
+    output.header_section.append(';    timestep: {}\n'.format(args.timestep))
+    output.header_section.append(';    h5_file: {}\n'.format(args.h5))
+    output.header_section.append('\n')
 
     # output.header_section.append('#include "./{}"\n'.format(itp_file.file_name))
 
