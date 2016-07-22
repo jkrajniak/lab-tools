@@ -32,6 +32,7 @@ cp topol.itp pull_0.00/
 cd pull_0.00/
 grompp_mpi -v
 mpiexec -np $n_proc $MDRUN
+cd ..
 
 # Now run rest of the stress-strain pulling
 last_step=pull_0.00
