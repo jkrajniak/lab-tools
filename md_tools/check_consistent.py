@@ -54,8 +54,10 @@ def main():
     if args.top:
         input_file = files_io.GROMACSTopologyFile(args.top)
         input_file.read()
+        total_charge = sum([x.charge for x in input_file.atoms.values()])
         if check_file(input_file, args.top):
             print('File {} is correct'.format(args.top))
+        print('{}: total charge {}'.format(args.top, total_charge))
 
 if __name__ == '__main__':
     main()

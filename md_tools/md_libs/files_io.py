@@ -126,7 +126,7 @@ def sort_h5md_array(input_array, ids, max_T=None):
     return output_array
 
 
-def prepare_h5md(h5file, group_name, begin, end, step=None, no_image=False):
+def prepare_h5md(h5file, group_name, begin, end, step=None, no_image=False, sort_h5md=True):
     """Returns H5MD data that are sorted and transformed."""
 
     if step is None:
@@ -149,7 +149,7 @@ def prepare_h5md(h5file, group_name, begin, end, step=None, no_image=False):
     trj = numpy.array(
         h5file['/particles/{}/position/value'.format(group_name)][begin:end:step]
     )
-    if ids is not None:
+    if ids is not None and sort_h5md:
         trj = sort_h5md_array(trj, ids)
 
     if 'image' in h5file['/particles/{}'.format(group_name)].keys() and not no_image:
@@ -157,7 +157,7 @@ def prepare_h5md(h5file, group_name, begin, end, step=None, no_image=False):
         image = numpy.array(
             h5file['/particles/{}/image/value'.format(group_name)][begin:end:step]
         )
-        if ids is not None:
+        if ids is not None and sort_h5md:
             image = sort_h5md_array(image, ids)
         trj = trj + box * image
 
@@ -165,7 +165,7 @@ def prepare_h5md(h5file, group_name, begin, end, step=None, no_image=False):
     masses = h5file['/particles/{}/mass'.format(group_name)]
     if 'value' in masses:
         masses = masses['value']
-        if ids is not None:
+        if ids is not None and sort_h5md:
             masses = sort_h5md_array(masses, ids, 1)
         masses = masses[0]
     masses = numpy.array(masses)
