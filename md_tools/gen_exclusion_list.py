@@ -18,9 +18,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import argparse
+import functools
 import re
 from md_libs import files_io
 import networkx as nx
+
+import multiprocessing
 
 
 def _args():
@@ -32,8 +35,19 @@ def _args():
         'Generate exclusion list for subgroup of atoms. This is a comma separated'
         ' list of regular expressions (compiled by Python re module)'))
 
+    parser.add_argument('--nt', default=None, help='Number of cores', type=int)
+
     return parser.parse_args()
 
+
+def get_all_paths(g_input, nrexcl, i_node):
+    node_list = sorted(g_input.node)
+    paths = []
+    for j in range(g_input.number_of_nodes()):
+        if i_node != j:
+            p = nx.all_simple_paths(g_input, node_list[i_node], node_list[j], nrexcl)
+            paths.extend([tuple(sorted((x[0], x[-1]))) for x in p if x[0] != x[-1]])
+    return paths
 
 def main():
     args = _args()
@@ -65,13 +79,14 @@ def main():
     print('Generated graph, number of edges {}, nodes {}'.format(g.number_of_edges(), g.number_of_nodes()))
     all_paths = []
     connected_subgraphs = nx.connected_component_subgraphs(g)
+    pool = multiprocessing.Pool(args.nt)
     for sub_g in connected_subgraphs:
         node_list = sorted(sub_g.node)
-        for i in range(sub_g.number_of_nodes()):
-            for j in range(sub_g.number_of_nodes()):
-                if i != j:
-                    p = nx.all_simple_paths(sub_g, node_list[i], node_list[j], args.nrexcl)
-                    all_paths.extend([tuple(sorted((x[0], x[-1]))) for x in p if x[0] != x[-1]])
+        path_gen = functools.partial(get_all_paths, sub_g, args.nrexcl)
+        path_gen(1)
+        ans = pool.map(path_gen, range(sub_g.number_of_nodes()))
+        all_paths.extend([x for l in ans for x in l])
+
     all_paths = sorted(set(all_paths))
     print('Generate {} exclusions'.format(len(all_paths)))
 
