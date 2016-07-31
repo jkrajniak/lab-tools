@@ -572,7 +572,8 @@ class GROMACSTopologyFile(object):
             'nonbond_params': self._parse_nonbond_params,
             'bondtypes': self._parse_bondtypes,
             'angletypes': self._parse_angletypes,
-            'dihedraltypes': self._parse_dihedraltypes
+            'dihedraltypes': self._parse_dihedraltypes,
+            'defaults': self._parse_defaults
         }
 
         self.writers = {
@@ -759,10 +760,10 @@ class GROMACSTopologyFile(object):
         previous_section = None
         for line in self.content:
             line = line.strip()
-            if line.startswith(';') or line.startswith('#') or len(line) == 0:
+            if 'include' in line:
+                self.header_section.append('{}\n'.format(line.strip()))
+            elif line.startswith(';') or line.startswith('#') or len(line) == 0:
                 continue
-            elif 'include' in line:
-                self.header_section.append(line.strip())
             elif line.startswith('['):  # Section
                 previous_section = section_name
                 section_name = line.replace('[', '').replace(']', '').strip()
@@ -1023,6 +1024,21 @@ class GROMACSTopologyFile(object):
     def _parse_system(self, raw_data):
         self.system_name = raw_data[0]
 
+    def _parse_defaults(self, raw_data):
+        self.defaults = {
+            'nbfunc': int(raw_data[0]),
+            'combinationrule': int(raw_data[1]),
+            'comb-rule': int(raw_data[1])
+            }
+        if len(raw_data) > 2:
+            self.defaults['gen-pairs'] = raw_data[2] == 'yes'
+            self.defaults['fudgeLJ'] = float(raw_data[3])
+            self.defaults['fudgeQQ'] = float(raw_data[4])
+        else:
+            self.defaults['gen-pairs'] = False
+            self.defaults['fudgeLJ'] = 1.0
+            self.defaults['fudgeQQ'] = 1.0
+
     # Writers
     def _write_atoms(self):
         return_data = []
@@ -1113,6 +1129,8 @@ class GROMACSTopologyFile(object):
 
     def _write_defaults(self):
         if self.defaults:
+            if 'gen-pairs' in self.defaults:
+                self.defaults['gen-pairs'] = 'yes' if self.defaults['gen-pairs'] else 'no'
             return [
                 '{nbfunc} {comb-rule} {gen-pairs} {fudgeLJ} {fudgeQQ}'.format(**self.defaults)
             ]

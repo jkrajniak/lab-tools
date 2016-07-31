@@ -80,10 +80,17 @@ def main():
         at = in_top.atoms[x]
         try:
             at.atom_id = topol_old2new[x]
+            at.cgnr = at.atom_id
         except KeyError:
             print('Skiping atom {}:{}'.format(at.chain_name, at.name))
             continue
         new_topol_atoms[topol_old2new[x]] = at
+
+    if args.remove_cross:
+        in_top.atomtypes = {k: v for k, v in in_top.atomtypes.items() if v['type'] != 'V'}
+
+    in_top.header_section.insert(0, '; input_topol: {}\n; conf: {}\n'.format(args.in_top, args.coord))
+    in_top.header_section.insert(1, '; clean: {}\n; remove_cross: {}\n'.format(args.clean, args.remove_cross))
 
     in_top.atoms = new_topol_atoms
 
