@@ -49,6 +49,15 @@ def get_all_paths(g_input, nrexcl, i_node):
             paths.extend([tuple(sorted((x[0], x[-1]))) for x in p if x[0] != x[-1]])
     return paths
 
+
+def replicate_list(input_list, mol, N, shift=-1, cmplx=False):
+    rr = [[i+x*N+shift for i in v] for x in range(mol) for v in input_list]
+    if cmplx:
+        return rr
+    else:
+        return [x for v in rr for x in v]
+
+
 def main():
     args = _args()
     input_top = files_io.GROMACSTopologyFile(args.in_top)
@@ -83,15 +92,26 @@ def main():
     for sub_g in connected_subgraphs:
         node_list = sorted(sub_g.node)
         path_gen = functools.partial(get_all_paths, sub_g, args.nrexcl)
-        path_gen(1)
         ans = pool.map(path_gen, range(sub_g.number_of_nodes()))
         all_paths.extend([x for l in ans for x in l])
 
     all_paths = sorted(set(all_paths))
-    print('Generate {} exclusions'.format(len(all_paths)))
 
+    # If topology contains description of nmols then we have to replicate 
+    # the exclusion lists.
+    replicated_paths = []
+    for molecule in input_top.molecules:
+        at_id = [x for x, d in input_top.atoms.items() if d.chain_name == molecule['name']]
+        nmols = int(molecule['mol'])
+        n_at = len(at_id)
+        replicated_paths.extend(
+            replicate_list(
+                [x for x in all_paths if x[0] in at_id and x[1] in at_id], 
+                nmols, n_at, cmplx=True, shift=0))
+
+    print('Generate {} exclusions'.format(len(replicated_paths)))
     with open(args.out_list, 'w') as output_file:
-        for p in all_paths:
+        for p in replicated_paths:
             output_file.write('{} {}\n'.format(p[0], p[1]))
     print('Saved in {}'.format(args.out_list))
 
