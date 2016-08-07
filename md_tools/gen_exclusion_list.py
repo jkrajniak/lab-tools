@@ -36,6 +36,7 @@ def _args():
         ' list of regular expressions (compiled by Python re module)'))
 
     parser.add_argument('--nt', default=None, help='Number of cores', type=int)
+    parser.add_argument('--append', default=False, action='store_true')
 
     return parser.parse_args()
 
@@ -73,7 +74,7 @@ def main():
             val = [re.match(m, at_data.name) for m in select_list]
             if any(val):
                 selected_atom_ids.append(at_id)
-    print('Selected {} atoms'.format(len(selected_atom_ids)))
+    print('Selected atom symbols: {}'.format(','.join({input_top.atoms[x].name for x in selected_atom_ids})))
 
     # Build a graph
     g = nx.Graph()
@@ -96,6 +97,7 @@ def main():
         all_paths.extend([x for l in ans for x in l])
 
     all_paths = sorted(set(all_paths))
+    print('Generate {} exclusions'.format(len(all_paths)))
 
     # If topology contains description of nmols then we have to replicate 
     # the exclusion lists.
@@ -110,7 +112,7 @@ def main():
                 nmols, n_at, cmplx=True, shift=0))
 
     print('Generate {} exclusions'.format(len(replicated_paths)))
-    with open(args.out_list, 'w') as output_file:
+    with open(args.out_list, 'a' if args.append else 'w') as output_file:
         for p in replicated_paths:
             output_file.write('{} {}\n'.format(p[0], p[1]))
     print('Saved in {}'.format(args.out_list))
