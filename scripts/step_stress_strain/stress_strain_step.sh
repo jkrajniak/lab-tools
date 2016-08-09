@@ -22,7 +22,9 @@ else
     done
     cd pull_0.00/
     grompp_mpi -v
+    [ "$?" != "0" ] && exit $?
     mpiexec -np $n_proc $MDRUN
+    [ "$?" != "0" ] && exit $?
     cd ..
 fi
 
@@ -44,10 +46,14 @@ for s in 0.01 0.02 0.03 0.04 0.05 0.06 0.07 0.08 0.09 0.1; do
     cd "${NEW_STEP_DIR}"
     # First run the deformation
     grompp_mpi -f grompp_deform.mdp
+    [ "$?" != "0" ] && exit $?
     mpiexec -np $n_proc $MDRUN
+    [ "$?" != "0" ] && exit $?
     # Now run NPT to collect data
     grompp_mpi -f grompp.mdp -c confout.gro
+    [ "$?" != "0" ] && exit $?
     mpiexec -np $n_proc $MDRUN
+    [ "$?" != "0" ] && exit $?
     last_step=$NEW_STEP_DIR
     cd ..
     echo "Done step $s"
