@@ -46,7 +46,7 @@ def _args():
     parser.add_argument('--time', dest='timestep', help='Which time frame (in simulation time units)',
                         default=-1, type=float)
     parser.add_argument('--out', '--out_topol', dest='out', help='GROMACS topology out file', required=True)
-    parser.add_argument('--outc', '--out_coordinate', dest='out_coordinate', help='.gro file', required=True)
+    parser.add_argument('--outc', '--out_coordinate', dest='out_coordinate', help='.gro file', required=False)
     parser.add_argument('--nt', default=None, type=int, help='Number of process to run.')
 
     return parser
@@ -110,47 +110,57 @@ def _generate_bonded_terms(g, valid_bonded_types, input_data):
     pairs = set()
     nodes = list(g.nodes())
     idx, i = input_data
-    for j in nodes[idx + 1:]:
-        # Generate angles, dihedrals, pairs
-        path_i_j = networkx.all_simple_paths(g, i, j, 4)
-        for x in path_i_j:
-            if len(x) == 3:
-                type_an = tuple(g.node[z]['type_id'] for z in x)
-                r_type_an = tuple(reversed(type_an))
-                param = valid_bonded_types.angles.get(type_an, valid_bonded_types.angles.get(r_type_an))
-                if param:
-                    angles.add(tuple(x + [param]))
-            elif len(x) == 4:
-                type_an = tuple(g.node[z]['type_id'] for z in x)
+
+    if valid_bonded_types.dihedrals:
+        path_length = 4
+    elif valid_bonded_types.angles:
+        path_length = 3
+    else:
+        path_length = 2
+
+    if path_length > 2:
+        for j in nodes[idx + 1:]:
+            # Generate angles, dihedrals, pairs
+            path_i_j = networkx.all_simple_paths(g, i, j, path_length)
+            for x in path_i_j:
+                if len(x) == 3:
+                    type_an = tuple(g.node[z]['type_id'] for z in x)
+                    r_type_an = tuple(reversed(type_an))
+                    param = valid_bonded_types.angles.get(type_an, valid_bonded_types.angles.get(r_type_an))
+                    if param:
+                        angles.add(tuple(x + [param]))
+                elif len(x) == 4:
+                    type_an = tuple(g.node[z]['type_id'] for z in x)
+                    r_type_an = tuple(reversed(type_an))
+                    param = valid_bonded_types.dihedrals.get(type_an)
+                    if not param:
+                        param = valid_bonded_types.dihedrals.get(r_type_an)
+                    if param:
+                        dihedrals.add(tuple(x + [param]))
+                    # Check also pairs.
+                    p_type_an = (type_an[0], type_an[3])
+                    r_ptype_an = (type_an[3], type_an[0])
+                    param  = valid_bonded_types.pairs.get(p_type_an, valid_bonded_types.pairs.get(r_ptype_an))
+                    if param:
+                        z = tuple([x[0], x[3], param])
+                        pairs.add(z)
+
+    # Generate improper dihedrals, assume that in the definition
+    # the first atom type is a central atom and iterate over 1-2 neighbours (like in LAMMPS)
+    if valid_bonded_types.dihedrals:
+        nb_i = g.edge[i].keys()
+        if len(nb_i) > 2:
+            # Scan through all permutations of given atom ids
+            for id_perm in itertools.permutations(nb_i, 3):
+                r_ids = [i, id_perm[0], id_perm[1], id_perm[2]]
+                type_an = tuple(g.node[z]['type_id'] for z in r_ids)
                 r_type_an = tuple(reversed(type_an))
                 param = valid_bonded_types.dihedrals.get(type_an)
                 if not param:
                     param = valid_bonded_types.dihedrals.get(r_type_an)
                 if param:
-                    dihedrals.add(tuple(x + [param]))
-                # Check also pairs.
-                p_type_an = (type_an[0], type_an[3])
-                r_ptype_an = (type_an[3], type_an[0])
-                param  = valid_bonded_types.pairs.get(p_type_an, valid_bonded_types.pairs.get(r_ptype_an))
-                if param:
-                    z = tuple([x[0], x[3], param])
-                    pairs.add(z)
-
-    # Generate improper dihedrals, assume that in the definition
-    # the first atom type is a central atom and iterate over 1-2 neighbours (like in LAMMPS)
-    nb_i = g.edge[i].keys()
-    if len(nb_i) > 2:
-        # Scan through all permutations of given atom ids
-        for id_perm in itertools.permutations(nb_i, 3):
-            r_ids = [i, id_perm[0], id_perm[1], id_perm[2]]
-            type_an = tuple(g.node[z]['type_id'] for z in r_ids)
-            r_type_an = tuple(reversed(type_an))
-            param = valid_bonded_types.dihedrals.get(type_an)
-            if not param:
-                param = valid_bonded_types.dihedrals.get(r_type_an)
-            if param:
-                dihedrals.add(tuple(list(r_ids) + [param]))
-                break
+                    dihedrals.add(tuple(list(r_ids) + [param]))
+                    break
 
     return angles, dihedrals, pairs
 
@@ -161,23 +171,24 @@ def generate_bonded_terms(args, g, valid_bonded_types):
     dihedrals = set([])
     pairs = set()
 
-    f = functools.partial(_generate_bonded_terms, g, valid_bonded_types)
-    # Run on multiple CPUs.
-    print('Generate bonded_terms on multi CPUs, it will take a while....')
-    if args.nt:
-        p = Pool(args.nt)
-    else:
-        p = Pool()
-    input_data = [(idx, i) for idx, i in enumerate(g.nodes())]
-    out_map = p.imap(f, input_data)
-    for a, d, p in out_map:
-        angles.update(a)
-        dihedrals.update(d)
-        pairs.update(p)
+    if valid_bonded_types.dihedrals or valid_bonded_types.angles:
+        f = functools.partial(_generate_bonded_terms, g, valid_bonded_types)
+        # Run on multiple CPUs.
+        print('Generate bonded_terms on multi CPUs, it will take a while....')
+        if args.nt:
+            p = Pool(args.nt)
+        else:
+            p = Pool()
+        input_data = [(idx, i) for idx, i in enumerate(g.nodes())]
+        out_map = p.imap(f, input_data)
+        for a, d, p in out_map:
+            angles.update(a)
+            dihedrals.update(d)
+            pairs.update(p)
 
-    print('Generated:')
-    print('Angles: {}'.format(len(angles)))
-    print('Dihedrals: {}'.format(len(dihedrals)))
+        print('Generated:')
+        print('Angles: {}'.format(len(angles)))
+        print('Dihedrals: {}'.format(len(dihedrals)))
 
     return angles, dihedrals, pairs
 
@@ -336,17 +347,26 @@ def build_graph(h5, settings, timestep):
     """Create Graph structure based on the connectivity."""
     g = networkx.Graph()
     # Create box.
-    box = h5['/particles/{}/box/edges'.format(settings.h5md_file.group)]
-    if 'value' in box:
-        timesteps = list(box['time'])
-        if timestep == -1:
-            timestep_box = -1
-        else:
-            timestep_box = timesteps.index(timestep)
-        print('Using time frame index {}, timestep {} of box'.format(
-            timesteps[timestep_box], timestep))
-        box = box['value'][timestep_box]
-    g.graph['box'] = np.array(box)
+    use_box = False
+    if 'box' in h5['/particles/{}'.format(settings.h5md_file.group)]:
+        box = h5['/particles/{}/box/edges'.format(settings.h5md_file.group)]
+        use_box = True
+        if 'value' in box:
+            timesteps = list(box['time'])
+            if timestep == -1:
+                timestep_box = -1
+            else:
+                timestep_box = timesteps.index(timestep)
+            try:
+                print('Using time frame index {}, timestep {} of box'.format(
+                    timesteps[timestep_box], timestep))
+                box = box['value'][timestep_box]
+            except IndexError:
+                print('Wrong box definition, skip to use it')
+                use_box=False
+        if use_box:
+            g.graph['box'] = np.array(box)
+
     # Create bond list.
     for group_name in settings.h5md_file.connection_groups:
         group_path = '/connectivity/{}/'.format(group_name)
@@ -367,7 +387,7 @@ def build_graph(h5, settings, timestep):
                 g.add_edge(x1, x2, group_name=group_name)
     print('Found {} bonds'.format(g.number_of_edges()))
     # Get types and generate the names of atoms.
-    positions_timesteps = list(h5['/particles/{}/position/time'.format(settings.h5md_file.group)])
+    positions_timesteps = list(h5['/particles/{}/species/time'.format(settings.h5md_file.group)])
     if timestep == -1:
         positions_index = -1
     else:
@@ -377,9 +397,12 @@ def build_graph(h5, settings, timestep):
         x for x in h5['/particles/{}/species/value'.format(settings.h5md_file.group)][positions_index]
         if x != -1
         ])
-    positions = np.array([
-        x for x in h5['/particles/{}/position/value'.format(settings.h5md_file.group)][positions_index]
-    ])
+    if 'position' in h5['/particles/{}'.format(settings.h5md_file.group)]:
+        positions = np.array([
+            x for x in h5['/particles/{}/position/value'.format(settings.h5md_file.group)][positions_index]
+        ])
+    else:
+        positions = None
     mass = np.array([
         x for x in h5['/particles/{}/mass/value'.format(settings.h5md_file.group)][positions_index]
     ])
@@ -405,13 +428,13 @@ def build_graph(h5, settings, timestep):
                 type_id=at_type,
                 type_name=type_name.type_name,
                 chain_name=type_name.chain_name,
-                position=positions[i],
+                position=positions[i] if positions else None,
                 mass=mass[i])
         else:
             g.node[pid]['type_id'] = at_type
             g.node[pid]['type_name'] = type_name.type_name
             g.node[pid]['chain_name'] = type_name.chain_name
-            g.node[pid]['position'] = positions[i]
+            g.node[pid]['position'] = positions[i] if positions else None
             g.node[pid]['mass'] = mass[i]
         if res_ids:
             g.node[pid]['chain_idx'] = res_ids[i]
@@ -448,7 +471,8 @@ def main():
     itp_file = files_io.GROMACSTopologyFile(args.itp)
     itp_file.read()
 
-    prepare_coordinate(args.out_coordinate, structure_graph)
+    if args.out_coordinate:
+        prepare_coordinate(args.out_coordinate, structure_graph)
     prepare_gromacs_topology(structure_graph, settings, itp_file, args)
 
 
