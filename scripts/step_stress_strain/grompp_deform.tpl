@@ -106,7 +106,7 @@ gen_temp                 = 298
 gen_seed                 = -1
 
 ; OPTIONS FOR BONDS
-constraints              = none
+constraints              = h-bonds
 ; Type of constraint algorithm
 constraint_algorithm     = LINCS
 ; Use successive overrelaxation to reduce the number of shake iterations

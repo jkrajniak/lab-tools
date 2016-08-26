@@ -36,7 +36,7 @@ def _args():
         ' list of regular expressions (compiled by Python re module)'))
 
     parser.add_argument('--nt', default=None, help='Number of cores', type=int)
-    parser.add_argument('--append', default=False, action='store_true')
+    parser.add_argument('--append', default=False, action='store_true', help='Append to the file')
 
     return parser.parse_args()
 
@@ -106,6 +106,7 @@ def main():
         at_id = [x for x, d in input_top.atoms.items() if d.chain_name == molecule['name']]
         nmols = int(molecule['mol'])
         n_at = len(at_id)
+        print('Process molecule: {}, atoms {}'.format(molecule, len(at_id)))
         replicated_paths.extend(
             replicate_list(
                 [x for x in all_paths if x[0] in at_id and x[1] in at_id], 

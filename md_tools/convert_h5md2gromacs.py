@@ -340,12 +340,14 @@ def prepare_coordinate(file_name, graph):
             chain_idx=at_data['chain_idx'],
             position=at_data['position']
         )
+    out_coordinate.title = '{}, timestep={}'.format(at_data['res_name'], graph.graph['timestep'])
     out_coordinate.write(force=True)
 
 
 def build_graph(h5, settings, timestep):
     """Create Graph structure based on the connectivity."""
     g = networkx.Graph()
+    g.graph['timestep'] = timestep
     # Create box.
     use_box = False
     if 'box' in h5['/particles/{}'.format(settings.h5md_file.group)]:
@@ -428,13 +430,13 @@ def build_graph(h5, settings, timestep):
                 type_id=at_type,
                 type_name=type_name.type_name,
                 chain_name=type_name.chain_name,
-                position=positions[i] if positions else None,
+                position=None if positions is None else positions[i],
                 mass=mass[i])
         else:
             g.node[pid]['type_id'] = at_type
             g.node[pid]['type_name'] = type_name.type_name
             g.node[pid]['chain_name'] = type_name.chain_name
-            g.node[pid]['position'] = positions[i] if positions else None
+            g.node[pid]['position'] = None if positions is None else positions[i]
             g.node[pid]['mass'] = mass[i]
         if res_ids:
             g.node[pid]['chain_idx'] = res_ids[i]
@@ -471,9 +473,9 @@ def main():
     itp_file = files_io.GROMACSTopologyFile(args.itp)
     itp_file.read()
 
+    prepare_gromacs_topology(structure_graph, settings, itp_file, args)
     if args.out_coordinate:
         prepare_coordinate(args.out_coordinate, structure_graph)
-    prepare_gromacs_topology(structure_graph, settings, itp_file, args)
 
 
 if __name__ == '__main__':

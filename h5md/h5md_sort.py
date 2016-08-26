@@ -26,9 +26,7 @@ def _args():
     parser = argparse.ArgumentParser('Sort H5MD file according to /id dataset')
     parser.add_argument('in_file')
     parser.add_argument('--force', action='store_true', default=False)
-
     return parser.parse_args()
-
 
 def sort_file(h5):
     atom_groups = [ag for ag in h5['/particles'] if 'id' in h5['/particles/{}/'.format(ag)]]
@@ -40,6 +38,7 @@ def sort_file(h5):
         for ag in atom_groups:  # Iterate over atom_groups
             # Create sorted id mapping.
             ids = h5['/particles/{}/id/value'.format(ag)]
+            ids_time = h5['/particles/{}/id/time'.format(ag)][t]
             idd = [
                 x[1] for x in sorted(
                     [(p_id, col_id) for col_id, p_id in enumerate(ids[t])],
@@ -48,19 +47,23 @@ def sort_file(h5):
             # Iterate over group with value dataset and sort it according to particle.
             for k in h5['/particles/{}/'.format(ag)].keys():
                 if 'value' in h5['/particles/{}/{}'.format(ag, k)].keys():
-                    path = '/particles/{}/{}/value'.format(ag, k)
-                    h5[path][t] = h5[path][t][idd]
-
+                    ds_time = h5['/particles/{}/{}/time'.format(ag, k)]
+                    if ds_time.shape[0] == 0:
+                        continue
+                    ds_time = ds_time[t]
+                    if ds_time == ids_time:
+                        path = '/particles/{}/{}/value'.format(ag, k)
+                        h5[path][t] = h5[path][t][idd]
 
 def main():
     args = _args()
     h5 = h5py.File(args.in_file, 'r+')
 
     if 'sorted' in h5.attrs and not args.force:
-	yn = raw_input('Warning, file was already sorted. Do you want to repeat it? (yes/no)')
+        yn = raw_input('Warning, file was already sorted. Do you want to repeat it? (yes/no)')
         if yn == 'no':
             return False
-    
+
     if not args.force:
         yn = raw_input('Do you want to sort file {}? (yes/no): '.format(args.in_file))
     else:
