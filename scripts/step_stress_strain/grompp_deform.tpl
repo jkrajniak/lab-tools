@@ -26,8 +26,8 @@ nstxout                  = 0
 nstvout                  = 0
 nstfout                  = 0
 ; Output frequency for energies to log file and energy file
-nstlog                   = 1000
-nstenergy                = 5000
+nstlog                   = 10000
+nstenergy                = 10000
 ; Output frequency and precision for xtc file
 nstxtcout                = 0
 xtc-precision            = 1000

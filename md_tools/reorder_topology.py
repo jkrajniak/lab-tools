@@ -29,6 +29,7 @@ def _args():
     parser.add_argument('--out_top', required=True)
     parser.add_argument('--coord', required=True)
     parser.add_argument('--clean', action='store_true', default=False)
+    parser.add_argument('--zero_charge', action='store_true', default=False, help='Zero partial charge')
     parser.add_argument('--remove_cross', action='store_true', default=False)
 
     return parser.parse_args()
@@ -85,6 +86,8 @@ def main():
             print('Skiping atom {}:{}'.format(at.chain_name, at.name))
             continue
         new_topol_atoms[topol_old2new[x]] = at
+        if args.zero_charge:
+            at.charge = 0.0
 
     if args.remove_cross:
         in_top.atomtypes = {k: v for k, v in in_top.atomtypes.items() if v['type'] != 'V'}

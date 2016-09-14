@@ -21,4 +21,4 @@ n_proc=$(cat $PBS_NODEFILE | wc -l)
 n_node=$(cat $PBS_NODEFILE | uniq | wc -l)
 mpdboot -f $PBS_NODEFILE -n $n_node -r ssh -v
 
-./stress_strain_step.sh
+./stress_strain_step.sh tensil_settings
