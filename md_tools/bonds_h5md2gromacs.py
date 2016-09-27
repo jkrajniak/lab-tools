@@ -24,7 +24,7 @@ from md_libs import files_io
 
 
 def _args():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser('Copy bond list from H5MD list to GROMACS topology')
     parser.add_argument('h5', help='Input H5MD file')
     parser.add_argument('topol', help='Input GROMACS Topology file')
     parser.add_argument('output', help='Output GROMACS topology file')

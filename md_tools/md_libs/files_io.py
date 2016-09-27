@@ -1254,6 +1254,46 @@ class LammpsReader(object):
                     self.previous_section = self.current_section
                     self.current_section = None
 
+    def read_dump(self, file_name, timestep, scale_factor=1.0, update=False):
+        """Reads data file written with write_dump command.
+
+        Args:
+            file_name: The name of data file to read.
+            timestep: The time step to read.
+            scale_factor: The factor by which every distance is rescaled.
+            update: If True then init() method is run first.
+        """
+        if update:
+            self.init()
+
+        if scale_factor is not None:
+            self.distance_scale_factor = scale_factor
+
+        current_item = None
+        skip_frame = False
+        number_of_atoms = None
+        with open(file_name, 'r') as f:
+            for line in f:
+                print skip_frame, current_item
+                if skip_frame and (not 'TIMESTEP' in line and current_item != 'TIMESTEP'):
+                    continue
+                if line.startswith('ITEM:'):
+                    current_item = line.split(':')[1].strip()
+                else:
+                    if current_item == 'TIMESTEP':
+                        current_timestep = int(line)
+                        if current_timestep != timestep:
+                            skip_frame = True
+                        else:
+                            skip_frame = False
+                    elif current_item == 'NUMBER OF ATOMS':
+                        number_of_atoms = int(line)
+                    elif 'ATOMS' in current_item:
+                        atom_data = dict(zip(
+                            current_item.replace('ATOMS', '').split(), line.split()))
+                        self.atoms[atom_data['id']] = atom_data
+
+
     def read_input(self, file_name):
         """Reads LAMMPS input script. Only take cares on *_style and pair_coeff
 
@@ -1498,6 +1538,9 @@ class LammpsReader(object):
         sp_line = input_line.split()
         at_id, mass = sp_line
         self._mass_type[int(at_id)] = float(mass)
+
+
+
 
 
 def read_coordinates(file_name):

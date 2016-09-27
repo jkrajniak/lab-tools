@@ -56,7 +56,7 @@ def write_frame(args, in_gro, h5, frame, append):
     try:
         box = np.array(h5['/particles/{}/box/edges/value'.format(args.group)][frame])
     except:
-        box = np.array(h5['/particles/{}/box/edges'.format(args.group)][frame])
+        box = np.array(h5['/particles/{}/box/edges'.format(args.group)])
 
     ids = sorted(in_gro.atoms)
     ppid = 0
