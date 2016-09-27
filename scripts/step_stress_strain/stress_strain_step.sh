@@ -6,33 +6,56 @@
 # Distributed under terms of the GNU GPLv3 license.
 #
 
+if [ "X$1" != "X" ]; then
+    source ./$1
+fi
+
 # Number of CPUs in the environment
-NPROC=$(cat $PBS_NODEFILE | wc -l)
+if [ "X$PBS_NODEFILE}" != "X" ]; then
+    NPROC=$(cat $PBS_NODEFILE | wc -l)
+else
+    NPROC=1
+fi
 
 # COMMANDS
-MDRUN="mpirun -n $NPROC mdrun_mpi"
-GROMPP="grompp_mpi"
-
-source ./$1
-
-function logg() {
-  LOG_FILE="output_${PBS_JOBID}.log"
-  echo ">>> $1" >> $LOG_FILE
-}
+if [ "X$MDRUN" = "X" ]; then
+    MDRUN="mpirun -n $NPROC mdrun_mpi"
+    GROMPP="grompp_mpi"
+fi
 
 WORKDIR=${PBS_O_WORKDIR}
 if [ "X${PBS_O_WORKDIR}" = "X" ]; then
     WORKDIR="."
 fi
 
+if [ "X$DEFORM_TPL" = "X" ]; then
+    DEFORM_TPL="grompp_deform.tpl"
+fi
+
+if [ "X$DATA_TPL" = "X" ]; then
+    DATA_TPL="grompp.mdp"
+fi
+
 LOG_FILE="${WORKDIR}/output_${PBS_JOBID}.log"
 
 function logg() {
   LOG_FILE="${WORKDIR}/output_${PBS_JOBID}.log"
-  echo "==== $1" >> $LOG_FILE
+  echo ">>> `date`: $1 <<<" >> $LOG_FILE
 }
 
-logg "Running tensil strain experiment, NPROC=$NPROC"
+if [ "X$DIRECTION" = "X" ]; then
+    echo "Direction not defined in source file!"
+    exit 128
+fi
+
+case $DIRECTION in
+    X|x) compress="0.0 4.5e-5 4.5e-5 0.0 0.0 0.0"; Lx=1;;
+    Y|y) compress="4.5e-5 0.0 4.5e-5 0.0 0.0 0.0"; Lx=2;;
+    Z|z) compress="4.5e-5 4.5e-5 0.0 0.0 0.0 0.0"; Lx=3;;
+esac
+
+logg "`date`"
+logg "Running tensile strain experiment, NPROC=$NPROC, DIRECTION=$DIRECTION"
 
 if [ "X$PREFIX" != "X" ]; then
     PREFIX="${PREFIX}_"
@@ -55,8 +78,14 @@ else
     for f in $FIRST_STEP_FILES; do
         cp -v $f ${ZERO_DIR}/ &>> $LOG_FILE
     done
+
+    cp -v $DATA_TPL ${ZERO_DIR} &>> $LOG_FILE
+
     logg "File copied"
     cd ${ZERO_DIR}
+
+    sed -i "s/^compressibility.*/compressibility = ${compress}  ; dir=$DIRECTION/g" $DATA_TPL
+
     $GROMPP  &>> $LOG_FILE
     $MDRUN &>> $LOG_FILE
     [ "$?" != "0" ] && exit $?
@@ -66,10 +95,10 @@ else
 fi
 
 # Gets the current value of Lz of the box from pull_0.00/confout.gro
-Lz="`tail -n1 pull_0.00/confout.gro | sed -e 's/.* \([0-9\.]*$\)/\1/g'`"
+
+Lz="`tail -n1 pull_0.00/confout.gro  | tr -s ' ' | sed -s 's/^[ \t]*//' | cut -f${Lx} -d' '`"
 
 logg "Initial box z-size: $Lz"
-
 
 # Now run rest of the stress-strain pulling
 last_step=${ZERO_DIR}
@@ -96,28 +125,40 @@ for s in $STRAIN_STEPS; do
         cp -v $sf ${NEW_STEP_DIR}/ &>> $LOG_FILE
     done
 
+    cp -v ${DEFORM_TPL} ${NEW_STEP_DIR}/ &>> $LOG_FILE
+    cp -v ${DATA_TPL} ${NEW_STEP_DIR}/ &>> $LOG_FILE
+
     cd "${NEW_STEP_DIR}"
 
     # First run the deformation
-    logg "=============== DEFORMATION $s ============"
+    if [ ! -f "done_deform" ]; then
+        logg "=============== DEFORMATION $s ============"
 
-    # Prepare deformation file from the template
-    Lz="`tail -n1 conf.gro | sed -e 's/.* \([0-9\.]*$\)/\1/g'`"
-    ds=$(awk "BEGIN { print ($s-$last_strain)}")
-    LzFinal=$(awk "BEGIN { print ($Lz + ${ds}*${Lz})}")
+        # Prepare deformation file from the template
+        Lz="`tail -n1 conf.gro  | tr -s ' ' | sed -s 's/^[ \t]*//' | cut -f${Lx} -d' '`"
+        ds=$(awk "BEGIN { print ($s-$last_strain)}")
+        LzFinal=$(awk "BEGIN { print ($Lz + ${ds}*${Lz})}")
 
-    logg "Deformation by $ds from $Lz to ${LzFinal}"
+        logg "Deformation by $ds from $Lz to ${LzFinal}"
 
-    make_deform.sh $ds $Lz
+        make_deform.sh $ds $Lz $DEFORM_TPL $DIRECTION
 
-    [ "$?" != "0" ] && exit $?
+        [ "$?" != "0" ] && exit $?
 
-    $GROMPP -f grompp_deform.mdp &>> $LOG_FILE
-    $MDRUN &>> $LOG_FILE
-    [ "$?" != "0" ] && exit $?
+        $GROMPP -f grompp_deform.mdp &>> $LOG_FILE
+        $MDRUN -c confout_deform.gro &>> $LOG_FILE
+        [ "$?" != "0" ] && exit $?
+        touch done_deform
+    else
+        logg "Skip deformation $s, done_deform exists"
+    fi
+
     logg "============== Collect data $s =============="
+
+    sed -i "s/^compressibility.*/compressibility = ${compress}  ; dir=$DIRECTION/g" ${DATA_TPL}
+
     # Now run NPT to collect data
-    $GROMPP -f grompp.mdp -c confout.gro &>> $LOG_FILE
+    $GROMPP -f ${DATA_TPL} -c confout_deform.gro &>> $LOG_FILE
     $MDRUN &>> $LOG_FILE
     [ "$?" != "0" ] && exit $?
 
