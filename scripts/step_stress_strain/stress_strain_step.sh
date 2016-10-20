@@ -40,7 +40,7 @@ LOG_FILE="${WORKDIR}/output_${PBS_JOBID}.log"
 
 function logg() {
   LOG_FILE="${WORKDIR}/output_${PBS_JOBID}.log"
-  echo ">>> `date`: $1 <<<" >> $LOG_FILE
+  echo ">>> `date`: $1 <<<" | tee $LOG_FILE
 }
 
 if [ "X$DIRECTION" = "X" ]; then
@@ -62,7 +62,7 @@ if [ "X$PREFIX" != "X" ]; then
 fi
 
 # First run for pull_0.00
-ZERO_DIR="${PREFIX}pull_0.00"
+ZERO_DIR="${PREFIX}pull_000"
 
 echo $ZERO_DIR
 
@@ -96,7 +96,7 @@ fi
 
 # Gets the current value of Lz of the box from pull_0.00/confout.gro
 
-Lz="`tail -n1 pull_0.00/confout.gro  | tr -s ' ' | sed -s 's/^[ \t]*//' | cut -f${Lx} -d' '`"
+Lz="`tail -n1 $ZERO_DIR/confout.gro  | tr -s ' ' | sed -s 's/^[ \t]*//' | cut -f${Lx} -d' '`"
 
 logg "Initial box z-size: $Lz"
 
@@ -104,13 +104,21 @@ logg "Initial box z-size: $Lz"
 last_step=${ZERO_DIR}
 last_strain=0.0
 
+STEP=0
+
 for s in $STRAIN_STEPS; do
     logg $s
-    NEW_STEP_DIR="${PREFIX}pull_${s}"
+
+    STEP=$((STEP + 1))
+
+    NEW_STEP_DIR="${PREFIX}pull_"$(awk "BEGIN { printf \"%03d\", $STEP }")
+    logg $NEW_STEP_DIR
+
     if [ -d "$NEW_STEP_DIR" ]; then
         if [ -f "$NEW_STEP_DIR/done" ]; then
             echo "Skip step $s" &>> $LOG_FILE
             last_step=$NEW_STEP_DIR
+            last_strain=$s
             continue
         else
             logg "Step $s not finished, clean up and run again"
@@ -130,6 +138,7 @@ for s in $STRAIN_STEPS; do
 
     cd "${NEW_STEP_DIR}"
 
+
     # First run the deformation
     if [ ! -f "done_deform" ]; then
         logg "=============== DEFORMATION $s ============"
@@ -137,6 +146,10 @@ for s in $STRAIN_STEPS; do
         # Prepare deformation file from the template
         Lz="`tail -n1 conf.gro  | tr -s ' ' | sed -s 's/^[ \t]*//' | cut -f${Lx} -d' '`"
         ds=$(awk "BEGIN { print ($s-$last_strain)}")
+
+        echo "# strain d_strain" > strain
+        echo "$s $ds" >> strain
+
         LzFinal=$(awk "BEGIN { print ($Lz + ${ds}*${Lz})}")
 
         logg "Deformation by $ds from $Lz to ${LzFinal}"

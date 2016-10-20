@@ -38,17 +38,19 @@ def _args():
                         help='Store whole trajectory')
     parser.add_argument('-b', help='Begin of trajectory', default=0, type=int)
     parser.add_argument('-e', help='End of trajectory', default=-1, type=int)
+    parser.add_argument('--extend', action='store_true')
     return parser.parse_args()
 
 
 def write_frame(args, in_gro, h5, frame, append):
     pos = h5['/particles/{}/position/value'.format(args.group)][frame]
     valid_species = None
+    try:
+        species = h5['/particles/{}/species/value'.format(args.group)][frame]
+    except:
+        species = h5['/particles/{}/species'.format(args.group)][frame]
+
     if args.valid_species:
-        try:
-            species = h5['/particles/{}/species/value'.format(args.group)][frame]
-        except:
-            species = h5['/particles/{}/species'.format(args.group)][frame]
         valid_species = set(map(int, args.valid_species.split(',')))
 
     images = h5['/particles/{}/image/value'.format(args.group)][frame]
@@ -58,21 +60,30 @@ def write_frame(args, in_gro, h5, frame, append):
     except:
         box = np.array(h5['/particles/{}/box/edges'.format(args.group)])
 
+    h5_pids = sorted([x for x in h5['/particles/{}/id/value'.format(args.group)][frame] if x != -1])
+
     ids = sorted(in_gro.atoms)
     ppid = 0
-    for pid, p in enumerate(pos):
-        if pid >= len(in_gro.atoms):
-            break
+    max_gro_pid = max(in_gro.atoms)
+    for pid, ppid in enumerate(h5_pids):
+        p = pos[pid]
+        s = species[pid]
+        if ppid > max_gro_pid:
+            in_gro.atoms[ppid] = files_io.Atom(
+                atom_id=ppid, name='T{}'.format(s), chain_name='XXX', chain_idx=ppid,
+                position=p+images[pid]*box if args.unfolded else p)
         if valid_species is None or species[pid] in valid_species:
-            at_data = in_gro.atoms[ids[ppid]]
+            at_data = in_gro.atoms[ppid]
             if args.unfolded:
-                in_gro.atoms[ids[ppid]] = at_data._replace(position=p + images[pid] * box)
+                in_gro.atoms[ppid] = at_data._replace(position=p + images[pid] * box)
             else:
-                in_gro.atoms[ids[ppid]] = at_data._replace(position=p)
-            ppid += 1
+                in_gro.atoms[ppid] = at_data._replace(position=p)
+            if args.extend:
+                in_gro.atoms[ppid] = at_data._replace(name='T{}'.format(s))
     time_frame = h5['/particles/{}/position/time'.format(args.group)][frame]
     in_gro.title = 'XXX molecule, t={}'.format(time_frame)
     in_gro.write(args.output, force=True, append=append)
+
 
 def main():
     args = _args()
@@ -98,6 +109,7 @@ def main():
             write_frame(args, in_gro, h5, fr, append=True)
     else:
         write_frame(args, in_gro, h5, args.frame, append=False)
+
 
 if __name__ == '__main__':
     main()

@@ -18,8 +18,6 @@ else
     DIR="$4"
 fi
 
-
-
 echo "Direction: $DIR"
 
 # Gets the box in z direction
