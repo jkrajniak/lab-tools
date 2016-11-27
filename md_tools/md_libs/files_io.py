@@ -21,6 +21,7 @@ import collections
 import copy
 import logging
 import os
+import re
 import sys
 import warnings
 
@@ -802,13 +803,13 @@ class GROMACSTopologyFile(object):
             sections = []
             if self.defaults:
                 sections.append('defaults')
-            if self.atomtypes:
+            if self.atomtypes or self.new_data['atomtypes']:
                 sections.append('atomtypes')
-            if self.bondtypes:
+            if self.bondtypes or self.new_data['bondtypes']:
                 sections.append('bondtypes')
-            if self.angletypes:
+            if self.angletypes or self.new_data['angletypes']:
                 sections.append('angletypes')
-            if self.dihedraltypes:
+            if self.dihedraltypes or self.new_data['dihedraltypes']:
                 sections.append('dihedraltypes')
             sections.extend([
                 'moleculetype',
@@ -873,17 +874,44 @@ class GROMACSTopologyFile(object):
         self.bonds_def[atom_tuple[1]].add(atom_tuple[0])
 
     def _parse_atomtypes(self, raw_data):
-        if len(raw_data) == 6:
-            name, mass, charge, at_type, sigma, epsilon = raw_data
-        elif len(raw_data) == 7:
-            name, _, mass, charge, at_type, sigma, epsilon = raw_data
+        #  EPO_C1 C 6 14.027000 A 0.3850 0.58576
+        raw_line = ' '.join(raw_data)
+        before_ptype, at_type, after_ptype = re.split('\s+(A|S|D|V)+\s+', raw_line)
+
+        before_ptype = before_ptype.split()
+        name = before_ptype.pop(0)
+        bonded_type = None
+        atomic_number = None
+        if len(before_ptype) == 2:
+            mass = before_ptype.pop(0)
+            charge = before_ptype.pop(0)
+        else:
+            if before_ptype[0].isalpha():
+                bonded_type = before_ptype.pop(0)
+            elif before_ptype[0].isdigit():
+                atomic_number = before_ptype.pop(0)
+            if len(before_ptype) == 2:
+                mass = before_ptype.pop(0)
+                charge = before_ptype.pop(0)
+            elif len(before_ptype) == 3:
+                atomic_number = before_ptype.pop(0)
+                mass = before_ptype.pop(0)
+                charge = before_ptype.pop(0)
+
+        sigma, epsilon = after_ptype.split()
+
+        if at_type not in ['A', 'S', 'D', 'V']:
+            print('Wrong particle type {} in atomtypes line: {}'.format(at_type, raw_data))
+
         self.atomtypes[name] = {
             'name': name,
-            'mass': mass,
-            'charge': charge,
+            'mass': float(mass),
+            'charge': float(charge),
             'type': at_type,
-            'sigma': sigma,
-            'epsilon': epsilon
+            'bonded_type': bonded_type,
+            'atomic_number': atomic_number,
+            'sigma': float(sigma),
+            'epsilon': float(epsilon)
         }
 
     def _parse_pairtypes(self, raw_data):
