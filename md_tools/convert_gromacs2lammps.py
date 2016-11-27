@@ -122,10 +122,11 @@ class LammpsWriter:
         dtypeid_coeff = {v: k for k, v in self.bonded_settings['improper_dihedrals'].coeff.items()}
         for dtypeid in sorted(dtypeid_coeff):
             coeff = dtypeid_coeff[dtypeid]
-            if coeff[0] == 1 and int(coeff[3]) == 2:  # harmonic improper to cossq
-                K = 2*self.kJ2kcal(coeff[2])
-                theta0 = coeff[1]
-                self.content.append('{} {} {}'.format(dtypeid, K, theta0))
+            if coeff[0] == 1 and int(coeff[1]) == 180:  # harmonic improper to cvff
+                K = self.kJ2kcal(coeff[2])
+                d = -1
+                n = int(coeff[3])
+                self.content.append('{} {} {} {}'.format(dtypeid, K, d, n))
             else:
                 raise RuntimeError('Improper func type {} not supported yet'.format(coeff[0]))
         self.content.append('')
