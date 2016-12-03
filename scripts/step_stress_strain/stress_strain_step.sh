@@ -19,8 +19,15 @@ fi
 
 # COMMANDS
 if [ "X$MDRUN" = "X" ]; then
-    MDRUN="mpirun -n $NPROC mdrun_mpi"
+    MDRUN="mdrun_mpi"
+fi
+
+if [ "X$GROMPP" = "X" ]; then
     GROMPP="grompp_mpi"
+fi
+
+if [ "X$MPIEXEC" = "X" ]; then
+    MPIEXEC="mpirun -n"
 fi
 
 WORKDIR=${PBS_O_WORKDIR}
@@ -40,7 +47,7 @@ LOG_FILE="${WORKDIR}/output_${PBS_JOBID}.log"
 
 function logg() {
   LOG_FILE="${WORKDIR}/output_${PBS_JOBID}.log"
-  echo ">>> `date`: $1 <<<" | tee $LOG_FILE
+  echo ">>> `date`: $1 <<<" | tee -a $LOG_FILE
 }
 
 if [ "X$DIRECTION" = "X" ]; then
@@ -87,7 +94,7 @@ else
     sed -i "s/^compressibility.*/compressibility = ${compress}  ; dir=$DIRECTION/g" $DATA_TPL
 
     $GROMPP  &>> $LOG_FILE
-    $MDRUN &>> $LOG_FILE
+    $MPIEXEC $NPROC $MDRUN  &>> $LOG_FILE
     [ "$?" != "0" ] && exit $?
 
     touch "done"
@@ -159,7 +166,7 @@ for s in $STRAIN_STEPS; do
         [ "$?" != "0" ] && exit $?
 
         $GROMPP -f grompp_deform.mdp &>> $LOG_FILE
-        $MDRUN -c confout_deform.gro &>> $LOG_FILE
+        $MPIEXEC $NPROC $MDRUN -c confout_deform.gro &>> $LOG_FILE
         [ "$?" != "0" ] && exit $?
         touch done_deform
     else
@@ -172,7 +179,7 @@ for s in $STRAIN_STEPS; do
 
     # Now run NPT to collect data
     $GROMPP -f ${DATA_TPL} -c confout_deform.gro &>> $LOG_FILE
-    $MDRUN &>> $LOG_FILE
+    $MPIEXEC $NPROC $MDRUN &>> $LOG_FILE
     [ "$?" != "0" ] && exit $?
 
     touch "done"
