@@ -136,6 +136,6 @@ deform = 0 0 V_DEFORM_Z 0 0 0
 Pcoupl                   = Parrinello-Rahman
 pcoupltype               = anisotropic
 ; Time constant (ps), compressibility (1/bar) and reference P (bar)
-tau_p                    = 1.0 1.0 1.0 0.0 0.0 0.0
+tau_p                    = 1.0
 compressibility          = 4.5e-5 4.5e-5 0.0 0.0 0.0 0.0
 ref_p                    = 1.0 1.0 1.0 0.0 0.0 0.0
