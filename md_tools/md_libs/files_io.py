@@ -1618,8 +1618,10 @@ class LammpsWriter:
         self.content.append('Pair Coeffs\n')
         for type_id in sorted(self.gro_topol.typeid2atomtypename):
             type_prop = self.gro_topol.atomtypes[self.gro_topol.typeid2atomtypename[type_id]]
-            self.content.append('{} {} {}'.format(
-                type_id, self.kJ2kcal(type_prop['epsilon']), type_prop['sigma'] * self.dist_scale))
+            self.content.append('{} {} {} # {}'.format(
+                type_id, self.kJ2kcal(type_prop['epsilon']),
+                type_prop['sigma'] * self.dist_scale,
+                self.gro_topol.typeid2atomtypename[type_id]))
         self.content.append('')
 
     def _write_bond_coeffs(self):
@@ -1630,7 +1632,7 @@ class LammpsWriter:
             if coeff[0] == 1:  # Harmonic
                 K = 0.5 * self.kJ2kcal(coeff[2]) / (self.dist_scale ** 2)  # kJ/nm^2 -> kcal/A^2
                 r0 = coeff[1] * self.dist_scale
-                self.content.append('{} {:.3f} {:.3f}'.format(btypeid, K, r0))
+                self.content.append('{} {:.6f} {:.6f} # {}'.format(btypeid, K, r0, coeff))
             else:
                 raise RuntimeError('Bond func type {} not supported yet'.format(coeff[0]))
         self.content.append('')
@@ -1643,7 +1645,7 @@ class LammpsWriter:
             if coeff[0] == 1:  # Harmonic
                 K = 0.5 * self.kJ2kcal(coeff[2])  # kJ/rad^2 -> kcal/rad^2
                 theta0 = coeff[1]  # deg
-                self.content.append('{} {:.3f} {:.3f}'.format(atypeid, K, theta0))
+                self.content.append('{} {:.6f} {:.6f} # {}'.format(atypeid, K, theta0, coeff))
             else:
                 raise RuntimeError('Angle func type {} not supported yet'.format(coeff[0]))
         self.content.append('')
@@ -1655,7 +1657,7 @@ class LammpsWriter:
             coeff = dtypeid_coeff[dtypeid]
             if coeff[0] == 3:  # RB -> nharmonic
                 An = [pow(-1, n) * self.kJ2kcal(x) for n, x in enumerate(coeff[1:])]
-                self.content.append('{} {} {}'.format(dtypeid, len(An), ' '.join(map('{:.3f}'.format, An))))
+                self.content.append('{} {} {} # {}'.format(dtypeid, len(An), ' '.join(map('{:.3f}'.format, An)), coeff))
             else:
                 raise RuntimeError('Dihedral func type {} not supported yet'.format(coeff[0]))
         self.content.append('')
@@ -1669,7 +1671,7 @@ class LammpsWriter:
                 K = self.kJ2kcal(coeff[2])
                 d = -1
                 n = int(coeff[3])
-                self.content.append('{} {} {} {}'.format(dtypeid, K, d, n))
+                self.content.append('{} {} {} {} # {}'.format(dtypeid, K, d, n, coeff))
             else:
                 raise RuntimeError('Improper func type {} not supported yet'.format(coeff[0]))
         self.content.append('')
@@ -1716,9 +1718,6 @@ class LammpsWriter:
 
         with open(self.outfile, 'w') as outfile:
             outfile.write('\n'.join(self.content))
-
-
-
 
 def read_coordinates(file_name):
     file_suffix_class = {
