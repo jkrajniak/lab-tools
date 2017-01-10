@@ -745,6 +745,28 @@ class GROMACSTopologyFile(object):
         for k in self.new_data:
             self.new_data[k] = {tuple(map(old2new.get, p)): v for p, v in self.new_data[k].items()}
 
+    def _replicate_lists(self, n_mols, n_atoms, input_list, shift=0):
+        return {
+            tuple(map(lambda x: shift+x+(mol*n_atoms), l)): v
+            for mol in range(n_mols) for l, v in input_list.items()
+            }
+
+    def replicate(self):
+        """Replicate molecules"""
+        nmols = int(self.molecules[0]['mol'])
+        atoms = copy.copy(self.atoms)
+        for mol_id in range(1, nmols):
+            for at_id in atoms:
+                new_at_id = mol_id*len(atoms) + at_id
+                self.atoms[new_at_id] = copy.copy(atoms[at_id])
+                self.atoms[new_at_id].atom_id = new_at_id
+                self.atoms[new_at_id].chain_idx = mol_id + 1
+
+        self.bonds = self._replicate_lists(nmols, len(atoms), self.bonds.copy())
+        self.angles = self._replicate_lists(nmols, len(atoms), self.angles.copy())
+        self.dihedrals = self._replicate_lists(nmols, len(atoms), self.dihedrals.copy())
+        self.improper_dihedrals = self._replicate_lists(nmols, len(atoms), self.improper_dihedrals.copy())
+
     def read(self):
         """Reads the topology file."""
 

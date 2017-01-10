@@ -110,6 +110,7 @@ def _args():
     parser.add_argument('--in_gro', help='GRO file', required=True)
     parser.add_argument('--in_top', help='GROMACS top file', required=True)
     parser.add_argument('--out_lammps', help='Output LAMMPS data file')
+    parser.add_argument('--scale_factor', default=10.0, help='Convert from nm to A', type=float)
 
     return parser
 
@@ -121,15 +122,17 @@ def main():
     in_gro.read()
     in_top = files_io.GROMACSTopologyFile(args.in_top)
     in_top.read()
+    in_top.replicate()
 
     bonded_lists = prepare_bonded_lists(in_top)
     for bname in bonded_lists:
         print('Found {} coeff of {} and {} interactions'.format(
-            max(bonded_lists[bname].coeff.values()), bname, len(bonded_lists[bname].blist)))
+            len(bonded_lists[bname].coeff.values()), bname, len(bonded_lists[bname].blist)))
     prepare_nonbonded_lists(in_top)
     prepare_atoms(in_top, in_gro)
 
     lmp_writer = files_io.LammpsWriter(args.out_lammps)
+    lmp_writer.dist_scale = args.scale_factor
     lmp_writer.gro_topol = in_top
     lmp_writer.bonded_settings = bonded_lists
     lmp_writer.write()
