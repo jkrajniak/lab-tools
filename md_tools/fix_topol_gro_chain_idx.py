@@ -25,7 +25,7 @@ from md_libs import files_io
 def _args():
     parser = argparse.ArgumentParser((
         'This tool tries to make the molecule index'
-        ' continious in the topology and in the coordinate files'))
+        ' continuous in the topology and in the coordinate files'))
     parser.add_argument('in_file', help='Input topology to fix')
     parser.add_argument('out_file', help='Input coordinate file')
 
