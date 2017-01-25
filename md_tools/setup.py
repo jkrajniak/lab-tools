@@ -31,11 +31,11 @@ class build_ext(_build_ext):
 
 
 ext_module = Extension(
-    'bonds',
+    'md_libs.bonds',
     ['md_libs/bonds.pyx'],
     )
 ext_module_rdf = Extension(
-    '_rdf',
+    'md_libs._rdf',
     ['md_libs/_rdf.pyx'],
 )
 
