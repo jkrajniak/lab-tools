@@ -34,11 +34,15 @@ ext_module = Extension(
     'bonds',
     ['md_libs/bonds.pyx'],
     )
+ext_module_rdf = Extension(
+    '_rdf',
+    ['md_libs/_rdf.pyx'],
+)
 
 setup(
     name='lab-tools',
     cmdclass = {'build_ext': build_ext},
-    ext_modules = [ext_module],
+    ext_modules = [ext_module, ext_module_rdf],
     install_requires=['numpy', 'Cython'],
     test_suite='tests',
     version='0.0.1'

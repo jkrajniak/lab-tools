@@ -87,6 +87,7 @@ def prepare_nonbonded_lists(top):
             top.atomtypes['{}{}'.format(at_obj.atom_type, new_type_id)] = top.atomtypes[at_obj.atom_type].copy()
             top.atomtypes['{}{}'.format(at_obj.atom_type, new_type_id)]['mass'] = at_obj.mass
             print('New atom type {}'.format(new_type_id))
+            print((at_obj.mass, top.atomtypes[at_obj.atom_type]))
             type_id = new_type_id
         at_obj.type_id = type_id
 
