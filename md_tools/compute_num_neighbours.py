@@ -25,7 +25,7 @@ from scipy.integrate import quad
 
 from md_libs import _rdf
 
-from matplotlib import pyplot as plt
+#from matplotlib import pyplot as plt
 
 
 def _args():
@@ -38,6 +38,7 @@ def _args():
                         help='Types 1 (separated by comma)')
     parser.add_argument('--type2', '-t2', type=str, required=True,
                         help='Types 2 (separated by comma)')
+    parser.add_argument('--output', required=True)
 
     return parser.parse_args()
 
@@ -85,9 +86,9 @@ def main():
         result.append([frame, np.average(avg_num)])
 
     result = np.array(result)
-    plt.plot(result[:, 0], result[:, 1])
-    plt.show()
-    print(np.average(result[:, 1]))
+    np.savetxt(args.output, result)
+    print('Saved data {}'.format(args.output))
+    print('Average neighbours {}'.format(np.average(result[:, 1])))
 
 if __name__ == '__main__':
     main()
