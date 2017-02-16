@@ -240,7 +240,7 @@ def compute_nb(r1, r2, L, cutoff):
         cy_L[i] = L[i]
         cy_L2[i] = 0.5*L[i]
 
-    return _compute_nb(r1, r2, cy_L, cy_L2, cutoff**2)
+    return _compute_nb2(r1, r2, cy_L, cy_L2, cutoff**2)
 
 
 @cython.boundscheck(False)
@@ -267,3 +267,42 @@ cdef _compute_nb(double[:, ::1] r1, double[:, ::1] r2, double[3] L, double[3] L2
 
     return result
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+cdef _compute_nb2(double[:, ::1] r1, double[:, ::1] r2, double[3] L, double[3] L2, double cutoff_sqr):
+    cdef int i, j, coord, idx
+    cdef double dist_sqr
+
+    cdef np.ndarray cyL = np.zeros(3)
+    cyL[0] = L[0]
+    cyL[1] = L[1]
+    cyL[2] = L[2]
+
+    cdef np.ndarray bins = np.ceil(cyL/cutoff_sqr)
+
+    hist1, _ = np.histogramdd(np.asarray(r1), bins=bins, range=([0, L[0]], [0, L[1]], [0, L[2]]))
+    hist2, _ = np.histogramdd(np.asarray(r2), bins=bins, range=([0, L[0]], [0, L[1]], [0, L[2]]))
+
+    print(np.average(hist2))
+    print(np.average(hist1))
+
+    print(hist1.shape)
+    print(hist2.shape)
+
+    cdef int[::1] result = np.zeros(r1.shape[0], dtype=np.int32)
+
+    for i in range(r1.shape[0]):
+        for j in range(r2.shape[0]):
+            dist_sqr = 0.0
+            for coord in range(3):
+                dist = r1[i,coord]-r2[j,coord]
+                if dist<-L2[coord]:
+                    dist += L[coord]
+                elif dist>L2[coord]:
+                    dist -= L[coord]
+                dist_sqr += dist**2
+            if dist_sqr > 0.0 and dist_sqr <= cutoff_sqr:
+                result[i] += 1
+
+    return result

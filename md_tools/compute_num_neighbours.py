@@ -25,6 +25,9 @@ from scipy.integrate import quad
 
 from md_libs import _rdf
 
+from multiprocessing.dummy import Pool
+import functools
+
 #from matplotlib import pyplot as plt
 
 
@@ -43,6 +46,30 @@ def _args():
     return parser.parse_args()
 
 
+def get_avg_nb(types1, types2, L, cutoff, ids, pos, species, frame):
+    id_frame = ids[frame]
+    p = pos[frame]
+    species_frame = species[frame]
+    pid_species1 = set()
+    for t1 in types1:
+        tt = id_frame[np.where(species_frame == t1)]
+        pid_species1.update(set(tt))
+    pid_species2 = set()
+    for t2 in types2:
+        tt = id_frame[np.where(species_frame == t2)]
+        pid_species2.update(set(tt))
+
+    pp1 = p[np.in1d(id_frame, list(pid_species1))]
+    pp2 = p[np.in1d(id_frame, list(pid_species2))]
+    #pp1 = p[np.where(id_frame != -1)]
+    #pp2 = p[np.where(id_frame != -1)]
+
+    avg_num = _rdf.compute_nb(
+        np.asarray(pp1, dtype=np.float),
+        np.asarray(pp2, dtype=np.float), L, cutoff)
+    print frame
+    return np.average(avg_num)
+
 def main():
     args = _args()
 
@@ -58,37 +85,31 @@ def main():
     if 'value' in L:
         L = L['value'][-1]
 
-    vol = L[0]*L[1]*L[2]
+    L = np.asarray(L)
 
-    result = []
-    for frame in xrange(args.begin, pos.shape[0] if args.end == -1 else args.end):
-        id_frame = ids[frame]
-        p = pos[frame]
-        species_frame = species[frame]
-        pid_species1 = set()
-        for t1 in map(int, args.type1.split(',')):
-            tt = id_frame[np.where(species_frame == t1)]
-            pid_species1.update(set(tt))
-        pid_species2 = set()
-        for t2 in map(int, args.type2.split(',')):
-            tt = id_frame[np.where(species_frame == t2)]
-            pid_species2.update(set(tt))
+    cutoff = args.cutoff
+    if args.cutoff is None:
+        cutoff = 0.5*L[0]
 
-        pp1 = p[np.in1d(id_frame, list(pid_species1))]
-        pp2 = p[np.in1d(id_frame, list(pid_species2))]
-        #pp1 = p[np.where(id_frame != -1)]
-        #pp2 = p[np.where(id_frame != -1)]
+    print('L: {}, cutoff: {}'.format(L, cutoff))
 
-        avg_num = _rdf.compute_nb(
-            np.asarray(pp1, dtype=np.float),
-            np.asarray(pp2, dtype=np.float), L, args.cutoff)
+    types1 = map(int, args.type1.split(','))
+    types2 = map(int, args.type2.split(','))
 
-        result.append([frame, np.average(avg_num)])
+    p = Pool()
+    get_avg_nb_ = functools.partial(get_avg_nb, types1, types2, L, cutoff, ids, pos, species)
+    frames = range(args.begin, pos.shape[0] if args.end == -1 else args.end)
+
+    result = map(get_avg_nb_, frames)
+
+    #for frame in xrange(args.begin, pos.shape[0] if args.end == -1 else args.end):
+    #    result.append([frame, get_avg_nb(types1, types2, L, cutoff, ids, pos, species, frame)])
+    #    print frame
 
     result = np.array(result)
     np.savetxt(args.output, result)
     print('Saved data {}'.format(args.output))
-    print('Average neighbours {}'.format(np.average(result[:, 1])))
+    print('Average neighbours {}'.format(np.average(result)))
 
 if __name__ == '__main__':
     main()
