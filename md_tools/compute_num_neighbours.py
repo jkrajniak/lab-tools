@@ -41,55 +41,49 @@ def _args():
                         help='Types 1 (separated by comma)')
     parser.add_argument('--type2', '-t2', type=str, required=True,
                         help='Types 2 (separated by comma)')
+    parser.add_argument('--state1', '-s1', type=str, required=False, help='States 1')
+    parser.add_argument('--state2', '-s2', type=str, required=False, help='States 2')
     parser.add_argument('--output', required=True)
     parser.add_argument('--nt', type=int, default=4, help='Number of CPUs')
 
     return parser.parse_args()
 
 
-def get_avg_nb(types1, types2, L, cutoff, ids, pos, species, frame):
-    id_frame = ids[frame]
-    p = pos[frame]
-    species_frame = species[frame]
-    pid_species1 = set()
-    for t1 in types1:
-        tt = id_frame[np.where(species_frame == t1)]
-        pid_species1.update(set(tt))
-    pid_species2 = set()
-    for t2 in types2:
-        tt = id_frame[np.where(species_frame == t2)]
-        pid_species2.update(set(tt))
-
-    pp1 = p[np.in1d(id_frame, list(pid_species1))]
-    pp2 = p[np.in1d(id_frame, list(pid_species2))]
-
-    avg_num = _rdf.compute_nb(
-        np.asarray(pp1, dtype=np.float),
-        np.asarray(pp2, dtype=np.float), L, cutoff)
-
-    print frame
-    return (frame, np.average(avg_num))
-
-
-
-def get_avg_nb2(types1, types2, L, cutoff, filename, frame):
+def get_avg_nb2(types1, types2, states1, states2, L, cutoff, filename, frame):
     h5 = h5py.File(filename, 'r', libver='latest', driver='stdio')
 
     pos = h5['/particles/atoms/position/value']
     ids = h5['/particles/atoms/id/value']
     species = h5['/particles/atoms/species/value']
+    states = h5['/particles/atoms/state/value']
 
     id_frame = ids[frame]
     p = pos[frame]
     species_frame = species[frame]
+    state_frame = states[frame]
+
     pid_species1 = set()
-    for t1 in types1:
-        tt = id_frame[np.where(species_frame == t1)]
-        pid_species1.update(set(tt))
+
+    if states1:
+        for t1 in types1:
+            for s1 in states1:
+                tt = id_frame[np.where((species_frame == t1) & (state_frame == s1))]
+                pid_species1.update(set(tt))
+    else:
+        for t1 in types1:
+            tt = id_frame[np.where(species_frame == t1)]
+            pid_species1.update(set(tt))
+
     pid_species2 = set()
-    for t2 in types2:
-        tt = id_frame[np.where(species_frame == t2)]
-        pid_species2.update(set(tt))
+    if states2:
+        for t2 in types2:
+            for s2 in states2:
+                tt = id_frame[np.where((species_frame == t2) & (state_frame == s2))]
+                pid_species2.update(set(tt))
+    else:
+        for t2 in types2:
+            tt = id_frame[np.where(species_frame == t2)]
+            pid_species2.update(set(tt))
 
     pp1 = p[np.in1d(id_frame, list(pid_species1))]
     pp2 = p[np.in1d(id_frame, list(pid_species2))]
@@ -111,9 +105,6 @@ def main():
     h5 = h5py.File(h5filename, 'r')
 
     pos = h5['/particles/atoms/position/value']
-    #ids = h5['/particles/atoms/id/value']
-    #species = h5['/particles/atoms/species/value']
-    #states = h5['/particles/atoms/state/value']
 
     L = h5['/particles/atoms/box/edges']
     if 'value' in L:
@@ -130,6 +121,12 @@ def main():
     types1 = map(int, args.type1.split(','))
     types2 = map(int, args.type2.split(','))
 
+    states1 = states2 = None
+    if args.state1:
+        states1 = map(int, args.state1.split(','))
+    if args.state2:
+        states2 = map(int, args.state2.split(','))
+
     p = Pool(args.nt)
 
     result = []
@@ -138,18 +135,8 @@ def main():
     frames_split = np.array_split(frames, 100)
     h5.close()
 
-    #for frames in frames_split:
-    #    for frame in frames:
-    #        result.append(get_avg_nb(types1, types2, L, cutoff, ids, pos, species, frame))
-
-    #get_avg_nb_ = functools.partial(get_avg_nb, types1, types2, L, cutoff, np.asarray(ids), np.asarray(pos), np.asarray(species))
-    get_avg_nb_ = functools.partial(get_avg_nb2, types1, types2, L, cutoff, h5filename)
-    #print 'bcc'
+    get_avg_nb_ = functools.partial(get_avg_nb2, types1, types2, states1, states2, L, cutoff, h5filename)
     result = p.map(get_avg_nb_, frames)
-
-    #for frame in xrange(args.begin, pos.shape[0] if args.end == -1 else args.end):
-    #    result.append([frame, get_avg_nb(types1, types2, L, cutoff, ids, pos, species, frame)])
-    #    print frame
 
     result = np.array(result)
     np.savetxt(args.output, result)
