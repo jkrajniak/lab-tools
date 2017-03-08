@@ -230,8 +230,6 @@ cdef inline distance_sqr(double[::1] d1, double[::1] d2, double[3] L, double[3] 
         dist_sqr += dist**2
     return dist_sqr
 
-
-
 def compute_nb(r1, r2, L, cutoff):
     cdef int i
     cdef double[3] cy_L
@@ -241,6 +239,19 @@ def compute_nb(r1, r2, L, cutoff):
         cy_L2[i] = 0.5*L[i]
 
     return _compute_nb(r1, r2, cy_L, cy_L2, cutoff**2)
+    #return _compute_nb2(r1, r2, L, cutoff)
+
+
+def compute_nb2(r1, r2, L, cutoff):
+    #cdef int i
+    #cdef double[3] cy_L
+    #cdef double[3] cy_L2
+    #for i in range(3):
+    #    cy_L[i] = L[i]
+    #    cy_L2[i] = 0.5*L[i]
+
+    #return _compute_nb(r1, r2, cy_L, cy_L2, cutoff**2)
+    return _compute_nb2(r1, r2, L, cutoff)
 
 
 @cython.boundscheck(False)
@@ -267,3 +278,43 @@ cdef _compute_nb(double[:, ::1] r1, double[:, ::1] r2, double[3] L, double[3] L2
 
     return result
 
+cdef list directions = [-2, -1, 0, 1, 2]
+cdef np.ndarray coords = np.array([
+    (l, m, n) for l in directions for m in directions for n in directions])
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+cdef inline _get_indexes(int i, int j, int k, double[::1] L):
+    cdef int[::1] indexes = np.array([i, j, k], dtype=np.int32)
+    return np.asarray((coords + indexes) % L, dtype=np.int)
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+cdef double _compute_nb2(double[:, ::1] r1, double[:, ::1] r2, np.ndarray L, double cutoff):
+    cdef int i, j, k
+
+    cdef np.ndarray bins = np.ceil(L/(cutoff))
+
+    #hist1, _ = np.histogramdd(np.asarray(r1), bins=bins, range=([0, L[0]], [0, L[1]], [0, L[2]]))
+    hist2, _ = np.histogramdd(np.asarray(r2), bins=bins, range=([0, L[0]], [0, L[1]], [0, L[2]]))
+
+    cdef int result = 0
+    cdef np.ndarray nb_indexes
+    print bins, L, cutoff**2, np.sum(hist2)
+
+    cdef np.ndarray res = np.zeros(hist2.shape, dtype=np.long)
+
+    cdef int total = 0
+
+    for i in range(bins[0]):
+        for j in range(bins[1]):
+            for k in range(bins[2]):
+                #num_type1 = hist1[i][j][k]
+                nb_indexes = _get_indexes(i, j, k, bins)
+                for idx in nb_indexes:
+                    total += 1
+                    res[i][j][k] += hist2[idx[0]][idx[1]][idx[2]]
+    return np.average(res)
