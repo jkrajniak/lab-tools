@@ -590,6 +590,7 @@ class GROMACSTopologyFile(object):
             'bonds': self._write_bonds,
             'angles': self._write_angles,
             'dihedrals': self._write_dihedrals,
+            'improper_dihedrals': self._write_improper_dihedrals,
             'pairs': self._write_pairs,
             'cross_bonds': lambda: self._write_default(
                 [self.new_data.get('cross_bonds'), self.cross_bonds]),
@@ -825,19 +826,20 @@ class GROMACSTopologyFile(object):
             sections = []
             if self.defaults:
                 sections.append('defaults')
-            if self.atomtypes or self.new_data['atomtypes']:
+            if self.atomtypes or self.new_data.get('atomtypes'):
                 sections.append('atomtypes')
-            if self.bondtypes or self.new_data['bondtypes']:
+            if self.bondtypes or self.new_data.get('bondtypes'):
                 sections.append('bondtypes')
-            if self.angletypes or self.new_data['angletypes']:
+            if self.angletypes or self.new_data.get('angletypes'):
                 sections.append('angletypes')
-            if self.dihedraltypes or self.new_data['dihedraltypes']:
+            if self.dihedraltypes or self.new_data.get('dihedraltypes'):
                 sections.append('dihedraltypes')
             sections.extend([
                 'moleculetype',
                 'atoms',
                 'bonds',
                 'angles',
+                'dihedrals',
                 'dihedrals',
                 'pairs'])
             if self.cross_bonds or self.new_data.get('cross_bonds'):

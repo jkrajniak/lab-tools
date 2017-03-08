@@ -37,15 +37,21 @@ def prepare_bonded_lists(top):
         for b, b_params in bond_list.items():
             if not b_params:
                 raise RuntimeError('Empty bond params is not supported yet')
-            key_params = tuple(
-                b_params)  # tuple(['{:.3f}'.format(x) if x < 1.0 else '{:.1f}'.format(x) for x in map(float, b_params)])
-            if coeff:
-                interaction_id = coeff.setdefault(key_params, max(coeff.values())+1)
+            # tuple(['{:.3f}'.format(x) if x < 1.0 else '{:.1f}'.format(x) for x in map(float, b_params)])
+            key_params = tuple([int(float(b_params[0]))] + map(float, b_params[1:]))  
+            if key_params not in coeff:
+                coeff[key_params] = btypeid
+                interaction_id = btypeid
+                btypeid += 1
             else:
-                interaction_id = coeff.setdefault(key_params, btypeid)
+                interaction_id = coeff[key_params]
             particle_list.append(list(b) + [interaction_id])
 
+        if bname == 'dihedrals':
+            print(sorted(coeff.values()))
         coeff = {tuple([int(float(k[0]))] + map(float, k[1:])): v for k, v in coeff.items()}
+        if bname == 'dihedrals':
+            print(sorted(coeff.values()))
 
         return_bonded_lists[bname] = interaction_tuple(coeff, particle_list)
 
