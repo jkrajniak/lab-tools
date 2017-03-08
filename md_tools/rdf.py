@@ -18,11 +18,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import argparse
+import functools
 import h5py
 import numpy as np
 import sys
 
-from matplotlib import pyplot as plt
+from multiprocessing import Pool
+
 
 from md_libs import _rdf
 
@@ -40,11 +42,13 @@ def _args():
     parser.add_argument('--normalize', default=True, type=int)
     parser.add_argument('--plot', action='store_true', default=False)
     parser.add_argument('--output', default=None, help='Output file')
+    parser.add_argument('--nt', default=4, type=int)
 
     return parser.parse_args()
 
 
-def gets_rdf(h5, type1, type2, index_file, cutoff, bins=100, begin=0, end=-1):
+def get_single_rdf(h5file, type1, type2, index_file, cutoff, bins, frame):
+    h5 = h5py.File(h5file, 'r', driver='stdio', libver='latest')
 
     pids = None
     npart = None
@@ -71,65 +75,80 @@ def gets_rdf(h5, type1, type2, index_file, cutoff, bins=100, begin=0, end=-1):
 
     result = np.zeros(bins)
     multi = False
-    frames = 0
-    for frame in xrange(begin, pos.shape[0] if end == -1 else end):
-        id_frame = ids[frame]
-        p = pos[frame]
-        npart = 0
-        npart1 = 1
-        npart2 = 1
-        if has_types:
-            species_frame = species[frame]
-            pid_species = set()
-            for t1 in type1:
-                tt = id_frame[np.where(species_frame == t1)]
-                pid_species.update(set(tt))
-            pid_species = list(pid_species)
-            p_pids = np.where(np.in1d(id_frame, pid_species))
-            pp1 = p[p_pids]
-            npart1 = len(set(pid_species))
-            if type2 is not None:
-                pid2_species = set()
-                for t2 in type2:
-                    tt = id_frame[np.where(species_frame == t2)]
-                    pid2_species.update(set(tt))
-                pid2_species = list(pid2_species)
-                if set(pid2_species).intersection(set(pid_species)):
-                    raise RuntimeError('Particle ids of type1 and type2 overlap')
-                p_pids2 = np.where(np.in1d(id_frame, pid2_species))
-                pp2 = p[p_pids2]
-                multi = True
-                npart = len(set.union(set(pid_species), set(pid2_species)))
-                npart2 = len(set(pid2_species))
-            else:
-                pp = pp1
-                npart = len(set(pid_species))
-        elif pids:
-            p_pids = np.where(np.in1id(id_frame, pids))
-            pp = p[p_pids]
+    print(frame)
+    id_frame = ids[frame]
+    p = pos[frame]
+    npart = 0
+    npart1 = 1
+    npart2 = 1
+    if has_types:
+        species_frame = species[frame]
+        pid_species = set()
+        for t1 in type1:
+            tt = id_frame[np.where(species_frame == t1)]
+            pid_species.update(set(tt))
+        pid_species = list(pid_species)
+        p_pids = np.where(np.in1d(id_frame, pid_species))
+        pp1 = p[p_pids]
+        npart1 = len(set(pid_species))
+        if type2 is not None:
+            pid2_species = set()
+            for t2 in type2:
+                tt = id_frame[np.where(species_frame == t2)]
+                pid2_species.update(set(tt))
+            pid2_species = list(pid2_species)
+            if set(pid2_species).intersection(set(pid_species)):
+                raise RuntimeError('Particle ids of type1 and type2 overlap')
+            p_pids2 = np.where(np.in1d(id_frame, pid2_species))
+            pp2 = p[p_pids2]
+            multi = True
+            npart = len(set.union(set(pid_species), set(pid2_species)))
+            npart2 = len(set(pid2_species))
         else:
-            pp = p[np.where(id_frame != -1)]
-            npart = len(set(id_frame[id_frame != -1]))
-        if npart == 0:
-            continue
-        if multi:
-            dx, tmp_r = _rdf.compute_rdf(
-                np.asarray(pp1, dtype=np.double), np.asarray(pp2, dtype=np.double),
-                L, bins, cutoff, False)
-        else:
-            dx, tmp_r = _rdf.compute_rdf(
-                np.asarray(pp, dtype=np.double), None,
-                L, bins, cutoff, False)
-            npart2 = npart1
+            pp = pp1
+            npart = len(set(pid_species))
+    elif pids:
+        p_pids = np.where(np.in1id(id_frame, pids))
+        pp = p[p_pids]
+    else:
+        pp = p[np.where(id_frame != -1)]
+        npart = len(set(id_frame[id_frame != -1]))
+    if npart == 0:
+        return None, None
+    if multi:
+        dx, tmp_r = _rdf.compute_rdf(
+            np.asarray(pp1, dtype=np.double), np.asarray(pp2, dtype=np.double),
+            L, bins, cutoff, False)
+    else:
+        dx, tmp_r = _rdf.compute_rdf(
+            np.asarray(pp, dtype=np.double), None,
+            L, bins, cutoff, False)
+        npart2 = npart1
 
-        phi = npart2/vol
-        norm = phi*dx*npart1
-        tmp_r /= norm
-        result += np.nan_to_num(tmp_r)
-        frames += 1
+    phi = npart2/vol
+    norm = phi*dx*npart1
+    tmp_r /= norm
+    result = np.nan_to_num(tmp_r)
 
-    norm = float(frames)
-    return dx, result/norm, dx*(np.arange(0, bins)+0.5)
+    return result, dx*(np.arange(0, bins)+0.5)
+
+
+def gets_rdf(h5, type1, type2, index_file, cutoff, bins=100, begin=0, end=-1, nt=4):
+    pos = h5['/particles/atoms/position/value']
+
+    print pos.shape[0]
+    frames = range(begin, pos.shape[0] if end == -1 else end)
+
+    p = Pool(nt)
+
+    get_rdf = functools.partial(get_single_rdf, h5.filename, type1, type2, index_file, cutoff, bins)
+    results = p.map(get_rdf, frames)
+
+    x = results[0][1]
+    result = np.array(np.sum([np.nan_to_num(k[0]) for k in results], axis=0))
+    norm = float(len(frames))
+
+    return result/norm, x
 
 
 def main():
@@ -155,8 +174,9 @@ def main():
         if args.type2:
             type2 = map(int, args.type2.split(','))
 
-    dx, result, x = gets_rdf(h5, type1, type2, args.n, args.cutoff, args.bins, args.b, args.e)
+    result, x = gets_rdf(h5, type1, type2, args.n, args.cutoff, args.bins, args.b, args.e, args.nt)
     if args.plot:
+        from matplotlib import pyplot as plt
         plt.plot(x, result)
         plt.show()
     if args.output:

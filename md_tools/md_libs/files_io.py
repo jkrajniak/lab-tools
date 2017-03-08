@@ -1221,7 +1221,9 @@ class GROMACSTopologyFile(object):
 class LammpsReader(object):
     """Very simple LAMMPS data file and input parser."""
 
-    def __init__(self):
+    def __init__(self, verbose=True):
+        self.verbose = verbose
+        self.timestep = 0
         self.previous_section = None
         self.current_section = ''
         self._item_counters = {}
@@ -1283,18 +1285,24 @@ class LammpsReader(object):
         if scale_factor is not None:
             self.distance_scale_factor = scale_factor
 
+        re_timestep = re.compile('.*timestep = ([0-9]+).*')
+
         with open(file_name, 'r') as f:
             for line in f:
                 line = line.strip().split('#')[0]
                 if not line or line.startswith('#'):
                     continue
+                if 'timestep' in line:
+                    timestep = re_timestep.match(line)
+                    if timestep:
+                        self.timestep = int(timestep.groups()[0])
                 section_line = line.split('#')[0].strip()
                 if section_line in self.data_parsers:
-                    print('{}: Reading section {}'.format(file_name, line))
+                    if self.verbose: print('{}: Reading section {}'.format(file_name, line))
                     self.previous_section = self.current_section
                     self.current_section = section_line
                 elif 'Coeff' in section_line:
-                    print('{}: Reading coefficient section {}'.format(file_name, line))
+                    if self.verbose: print('{}: Reading coefficient section {}'.format(file_name, line))
                     self.previous_section = self.current_section
                     self.current_section = 'coeffs'
                     self._section_line = section_line
@@ -1324,7 +1332,6 @@ class LammpsReader(object):
         number_of_atoms = None
         with open(file_name, 'r') as f:
             for line in f:
-                print skip_frame, current_item
                 if skip_frame and (not 'TIMESTEP' in line and current_item != 'TIMESTEP'):
                     continue
                 if line.startswith('ITEM:'):
@@ -1357,7 +1364,7 @@ class LammpsReader(object):
                     continue
                 if '_style' in line:
                     sp_line = line.split()
-                    print('Reads  {}'.format(sp_line[0]))
+                    if self.verbose: print('Reads  {}'.format(sp_line[0]))
                     self.force_field[sp_line[0]] = sp_line[1:]
                 elif 'bond_coeff' in line or 'angle_coeff' in line or 'dihedral_coeff' in line:
                     sp_line = line.split()
@@ -1379,7 +1386,7 @@ class LammpsReader(object):
                 elif 'read_data' in line:
                     sp_line = line.split()
                     data_file = sp_line[1].strip()
-                    print('Reads data file: {}'.format(data_file))
+                    if self.verbose: print('Reads data file: {}'.format(data_file))
                     self.read_data(data_file)
 
     def update_atoms(self, file_name):
@@ -1398,7 +1405,7 @@ class LammpsReader(object):
                     self.previous_section = self.current_section
                     self.current_section = section_line
                     if section_line == 'Atoms':
-                        print('{}: Found "Atoms" section, updating atoms'.format(file_name))
+                        if self.verbose: print('{}: Found "Atoms" section, updating atoms'.format(file_name))
                 elif self.current_section is not None and self.current_section == 'Atoms':
                     self._read_atom(line, update=True)
                 else:
