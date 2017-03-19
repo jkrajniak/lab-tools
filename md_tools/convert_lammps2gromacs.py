@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Copyright (C) 2016 Jakub Krajniak <jkrajniak@gmail.com>
+Copyright (C) 2016-2017 Jakub Krajniak <jkrajniak@gmail.com>
 
 This file is part of Backmapper.
 
@@ -29,12 +29,54 @@ from md_libs import files_io
 __doc__ = 'Convert LAMMPS to GROMACS'
 
 
+
+class InputSettings:
+    def __init__(self, input_file):
+        self.input_file = input_file
+        self.typeid2name = {}
+        self.molecules = []
+        self.typeseq2molecule = {}
+        self.name_seq = []
+        self.chain_name_seq = []
+        self.nrmols = 1
+
+    def parse(self):
+        tree = etree.parse(self.input_file)
+        root = tree.getroot()
+
+        for e in root.find('types').text.split():
+            type_id, type_name = e.split(':')
+            if type_id not in self.typeid2name:
+                self.typeid2name[int(type_id)] = type_name.strip()
+            else:
+                raise RuntimeError('Type {} already defined {}'.format(type_id, e))
+
+        if root.findall('molecules'):
+            Molecule = collections.namedtuple('Molecule', ['nbeads', 'nmols', 'name', 'name_seq'])
+            for molecule in root.findall('molecules'):
+                nbeads = int(molecule.attrib['nbeads'])
+                nmols = int(molecule.attrib['nmols'])
+                name = molecule.attrib['name']
+                name_seq = molecule.text.split()
+                if nbeads != len(name_seq):
+                    print('Atom names sequence not correct, it should have {} elements'.format(nbeads))
+                self.molecules.append(Molecule(nbeads, nmols, name, name_seq))
+                self.name_seq.extend(name_seq*nmols)
+                self.chain_name_seq.extend([name]*(nmols*nbeads))
+        else:
+            raise RuntimeError('Molecules not defined properly')
+
+        self.mol_name = root.find('system').attrib['name']
+        self.nrexcl = root.find('system').attrib['nrexcl']
+
+
 def read_settings(input_file):
     tree = etree.parse(input_file)
     root = tree.getroot()
+    type2name = {}
     type2chain = {}
     output_type = collections.namedtuple('output_type', ['chain_name', 'type_name'])
-    for e in root.find('type2chain').text.split():
+    for e in root.find('type2name').text.split():
         type_id, chain_name, type_name = e.split(':')
         type2chain[int(type_id)] = output_type(chain_name.strip(), type_name.strip())
     name_sequence = {}
@@ -67,7 +109,7 @@ def lammps2gromacs_ff(lmp_input, settings):
         """Converts kcal -> kJ"""
         return v*4.184
 
-    output_ff = {'bonds': {}, 'angles': {}, 'dihedrals': {}, 'atomtypes': {}}
+    output_ff = {'bonds': {}, 'angles': {}, 'dihedrals': {}, 'atomtypes': {}, 'improper_dihedrals': {}}
     if 'bond_style' in lmp_input.force_field:
         bond_style = lmp_input.force_field['bond_style'][0]
         if bond_style == 'harmonic':
@@ -105,13 +147,34 @@ def lammps2gromacs_ff(lmp_input, settings):
         elif dihedral_style == 'table':
             for k, v in lmp_input.force_field['dihedral'].iteritems():
                 output_ff['dihedrals'][k] = [8, k, 0.0, '; cg term', v]
+        elif dihedral_style == 'nharmonic':
+            coeff = {k: map(float, v) for k, v in lmp_input.force_field['dihedral'].iteritems()}
+            for k, v in coeff.items():
+                n = int(v[0])  # multiplicity
+                if n != 6:
+                    raise RuntimeError('Number of nharmonic dihedrals has to be 6, is: {}'.format(n))
+                if n != len(v[1:]):
+                    raise RuntimeError('Declared {} coeffs, found {}'.format(n, len(v[1:])))
+                output_ff['dihedrals'][k] = [3] + map(kcal2kJ, v[1:]) + ['; ', v]
         else:
             raise RuntimeError('dihedral_style {} not supported'.format(dihedral_style))
+
+    if 'improper_style' in lmp_input.force_field:
+        improper_style = lmp_input.force_field['improper_style'][0]
+        if improper_style == 'cvff':
+            coeff = {
+                k: map(float, v)
+                for k, v in lmp_input.force_field['improper'].iteritems()}
+            print(coeff)
+            for k, v in coeff.items():
+                K = kcal2kJ(float(v[0]))
+                d = int(v[1])
+                n = int(v[2])
+                output_ff['improper_dihedrals'][k] = [1, 180, K, n, '; '] + v
 
     if 'pair_style' in lmp_input.force_field:
         pair_style = lmp_input.force_field['pair_style'][0]
         if pair_style == 'table':
-
             for pair_type, output_type in settings.type2chain.items():
                 output_ff['atomtypes'][output_type.type_name] = {
                     'name': output_type.type_name,
@@ -121,6 +184,22 @@ def lammps2gromacs_ff(lmp_input, settings):
                     'sigma': 1.0,
                     'epsilon': 1.0
                 }
+        elif pair_style.startswith('lj'):
+            cutoff = lmp_input.force_field['pair_style'][1]
+            print('Pair style {}, cutoff: {}'.format(pair_style, cutoff))
+            for pair_type, output_type in settings.typeid2name.items():
+                mass = lmp_input._mass_type[pair_type]
+                charge = 0.0  # lmp_input.atom_charges[pair_type]
+                epsilon, sigma = lmp_input.force_field['pair'][pair_type]
+                sigma = float(sigma)*0.1
+                epsilon = kcal2kJ(float(epsilon))
+                output_ff['atomtypes'][output_type] = {
+                    'name': output_type,
+                    'mass': mass,
+                    'charge': charge,
+                    'type': 'A',
+                    'sigma': sigma,
+                    'epsilon': epsilon}
         else:
             raise RuntimeError('pair_style {} not supported'.format(pair_style))
 
@@ -144,14 +223,12 @@ def build_gromacs(lr, settings, output_file):
     print('Warning, [ defaults ] set to {}'.format(output.defaults))
 
     # Write atoms.
-    # Stores sequence index for chains.
-    seq_idx = {k: 0 for k in settings.name_seq}
-    for atid in sorted(lr.atoms):
+    for atidx, atid in enumerate(sorted(lr.atoms)):
         at_data = lr.atoms[atid]
-        chain_name, at_type = settings.type2chain[at_data['atom_type']]
-        at_seq = settings.name_seq[chain_name]
-        chain_len = len(at_seq)
-        at_name = at_seq[seq_idx[chain_name] % chain_len]
+        at_type = settings.typeid2name[at_data['atom_type']]
+        at_name = settings.name_seq[atidx]
+        chain_name = settings.chain_name_seq[atidx]
+
         output.atoms[atid] = files_io.TopoAtom(
             atom_id=atid,
             atom_type=at_type,
@@ -162,7 +239,6 @@ def build_gromacs(lr, settings, output_file):
             charge=at_data['charge'] if at_data['charge'] else 0.0,
             mass=at_data['mass']
         )
-        seq_idx[chain_name] += 1
     # Create bonded lists.
     lammps_ff = lammps2gromacs_ff(lr, settings)
 
@@ -171,25 +247,25 @@ def build_gromacs(lr, settings, output_file):
 
     for bond_type, bond_list in lr.topology['bonds'].items():
         for bp in sorted(bond_list):
-            output.bonds[bp] = lammps_ff['bonds'][bond_type][:3]
+            output.bonds[bp] = lammps_ff['bonds'][bond_type]
     for angle_type, angle_list in lr.topology['angles'].items():
         for bp in sorted(angle_list):
-            output.angles[bp] = lammps_ff['angles'][angle_type][:3]
+            output.angles[bp] = lammps_ff['angles'][angle_type]
     for dihedral_type, dihedral_list in lr.topology['dihedrals'].items():
         for bp in sorted(dihedral_list):
-            output.dihedrals[bp] = lammps_ff['dihedrals'][dihedral_type][:3]
+            output.dihedrals[bp] = lammps_ff['dihedrals'][dihedral_type]
     for dihedral_type, dihedral_list in lr.topology['impropers'].items():
         for bp in sorted(dihedral_list):
-            output.improper_dihedrals[bp] = lammps_ff['dihedrals'][dihedral_type][:3]
+            output.improper_dihedrals[bp] = lammps_ff['improper_dihedrals'][dihedral_type]
 
-    output.moleculetype = {
+    output.moleculetype = [{
         'name': settings.mol_name,
         'nrexcl': settings.nrexcl
-    }
-    output.molecules = {
+    }]
+    output.molecules = [{
         'name': settings.mol_name,
         'mol': settings.nrmols
-    }
+    }]
     output.system_name = settings.mol_name
     return output
 
@@ -218,7 +294,6 @@ def _args():
     parser.add_argument('--out', help='GROMACS out file', required=True)
     parser.add_argument('--out_coordinate', help='.gro file', required=True)
     parser.add_argument('--out_graph', help='Write NetworkX graph', required=False)
-    parser.add_argument('--out_lammps', help='Write cPickled LammpsReader object')
     parser.add_argument('--options', help='Options file', required=True)
 
     return parser
@@ -229,13 +304,13 @@ def main():
     lammps_reader = files_io.LammpsReader()
     lammps_reader.read_input(args.lammps_in)
     lammps_reader.read_data(args.lammps_data, update=True)
-    settings = read_settings(args.options)
+    settings = InputSettings(args.options)
+    settings.parse()
+
     if args.out_graph:
         out_graph = lammps_reader.get_graph(settings)
         networkx.write_gpickle(out_graph, args.out_graph)
-    if args.out_lammps:
-        cPickle.dump({'atoms': lammps_reader.atoms, 'topology': lammps_reader.topology},
-                     open(args.out_lammps, 'wb'))
+
     output_topology = build_gromacs(lammps_reader, settings, args.out)
     output_topology.write()
 
