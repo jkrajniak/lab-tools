@@ -48,7 +48,8 @@ def main():
 
     last_chidx = -1
     ch_idx = 0
-    for at_id in sorted(in_file.atoms):
+    atoms = {}
+    for new_at_id, at_id in enumerate(sorted(in_file.atoms), 1):
         at_data = in_file.atoms[at_id]
         if last_chidx != at_data.chain_idx:
             ch_idx += 1
@@ -56,9 +57,11 @@ def main():
         if topol:
             at_data.chain_idx = ch_idx
         else:
-            in_file.atoms[at_id] = in_file.atoms[at_id]._replace(chain_idx=ch_idx)
-        print in_file.atoms[at_id].chain_idx
+            at_data = at_data._replace(chain_idx=ch_idx, atom_id=new_at_id)
+            atoms[new_at_id] = at_data
     print('Saving updated file to {}'.format(args.out_file))
+    if not topol:
+        in_file.atoms = atoms
     in_file.write(args.out_file, force=True)
 
 if __name__ == '__main__':

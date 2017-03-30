@@ -201,12 +201,7 @@ def prepare_bonded_lists(top):
                 interaction_id = coeff[key_params]
             particle_list.append(list(b) + [interaction_id])
 
-        if bname == 'dihedrals':
-            print(sorted(coeff.values()))
         coeff = {tuple([int(float(k[0]))] + map(float, k[1:])): v for k, v in coeff.items()}
-        if bname == 'dihedrals':
-            print(sorted(coeff.values()))
-
         return_bonded_lists[bname] = interaction_tuple(coeff, particle_list)
 
     return return_bonded_lists

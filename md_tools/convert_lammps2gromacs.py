@@ -23,7 +23,6 @@ import collections
 import cPickle
 import networkx
 import xml.etree.ElementTree as etree
-
 from md_libs import files_io
 
 __doc__ = 'Convert LAMMPS to GROMACS'
@@ -115,7 +114,7 @@ def lammps2gromacs_ff(lmp_input, settings):
         if bond_style == 'harmonic':
             coeff = {k: map(float, v) for k, v in lmp_input.force_field['bond'].iteritems()}
             for k in coeff:
-                K = kcal2kJ(coeff[k][0]) * 100.0
+                K = 2*kcal2kJ(coeff[k][0]) * 100.0
                 r = coeff[k][1] / 10.0
                 output_ff['bonds'][k] = [1, r, K, '; cg term']
         elif bond_style == 'table':
@@ -129,7 +128,7 @@ def lammps2gromacs_ff(lmp_input, settings):
         if angle_style == 'harmonic':
             coeff = {k: map(float, v) for k, v in lmp_input.force_field['angle'].iteritems()}
             for k in coeff:
-                K = kcal2kJ(coeff[k][0])
+                K = 2*kcal2kJ(coeff[k][0])
                 output_ff['angles'][k] = [1, coeff[k][1], K, '; cg term']
         elif angle_style == 'table':
             for k, v in lmp_input.force_field['angle'].iteritems():
