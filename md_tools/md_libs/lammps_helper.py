@@ -47,7 +47,7 @@ def get_lammps(filename, return_frames=False):
                     frame_lines.append(lines)
                     lines = []
                 continue
-            if l.startswith('Time'):
+            if l.startswith('Time') or l.startswith('Step'):
                 in_section = True
                 headers.append(l.split())
                 continue

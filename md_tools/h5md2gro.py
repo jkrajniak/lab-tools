@@ -75,11 +75,13 @@ def write_frame(args, in_gro, h5, frame, append):
         if valid_species is None or species[pid] in valid_species:
             at_data = in_gro.atoms[ppid]
             if args.unfolded:
-                in_gro.atoms[ppid] = at_data._replace(position=p + images[pid] * box)
+                at_data = at_data._replace(position=p + images[pid] * box)
             else:
-                in_gro.atoms[ppid] = at_data._replace(position=p)
+                at_data = at_data._replace(position=p)
             if args.extend:
-                in_gro.atoms[ppid] = at_data._replace(name='T{}'.format(s))
+                at_data = at_data._replace(name='T{}'.format(s))
+
+            in_gro.atoms[ppid] = at_data
     time_frame = h5['/particles/{}/position/time'.format(args.group)][frame]
     in_gro.title = 'XXX molecule, t={}'.format(time_frame)
     in_gro.write(args.output, force=True, append=append)
@@ -98,12 +100,15 @@ def main():
     nr_frames = pos.shape[0]
     print('Total number of frames: {}'.format(nr_frames))
     if args.store_trajectory:
+        end_frame = nr_frames
         if args.e == -1:
             end_frame = nr_frames
         elif args.e > nr_frames:
             raise RuntimeError('wrong end frame {} > {}'.format(args.e, nf_frames))
         elif args.b > args.e:
             raise RuntimeError('Begin frame > end frame')
+        else:
+            end_frame = args.e
         frames = range(args.b, end_frame)
         for fr in frames:
             write_frame(args, in_gro, h5, fr, append=True)
