@@ -1387,7 +1387,7 @@ class LammpsReader(object):
                 elif 'bond_coeff' in line or 'angle_coeff' in line or 'dihedral_coeff' in line:
                     sp_line = line.split()
                     stype = sp_line[0].replace('_coeff', '')
-                    btype = sp_line[1].strip()
+                    btype = int(sp_line[1].strip())
                     self.force_field[stype][btype] = sp_line[2:]
                 elif 'pair_coeff' in line:
                     sp_line = line.split()
@@ -1506,9 +1506,14 @@ class LammpsReader(object):
         # Set type
         sp_line[:3] = map(int, sp_line[:3])
         sp_line[3:7] = map(float, sp_line[3:7])
-        if len(sp_line) == 10:
+        sp_line_len = len(sp_line)
+        if sp_line_len == 10:
             sp_line[7:10] = map(int, sp_line[7:10])
             at_id, at_tag, at_type, q, x, y, z, nx, ny, nz = sp_line
+        elif sp_line_len == 6:
+            at_id, at_tag, at_type, x, y, z = sp_line
+            q = 0
+            nx, ny, nz = None, None, None
         else:
             at_id, at_tag, at_type, q, x, y, z = sp_line
             nx, ny, nz = None, None, None

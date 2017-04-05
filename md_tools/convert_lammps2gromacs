@@ -189,7 +189,12 @@ def lammps2gromacs_ff(lmp_input, settings):
             for pair_type, output_type in settings.typeid2name.items():
                 mass = lmp_input._mass_type[pair_type]
                 charge = 0.0  # lmp_input.atom_charges[pair_type]
-                epsilon, sigma = lmp_input.force_field['pair'][pair_type]
+                if 'pair' in lmp_input.force_field:
+                    epsilon, sigma = lmp_input.force_field['pair'][pair_type]
+                elif 'pair_coeff' in lmp_input.force_field:
+                    epsilon, sigma = lmp_input.force_field['pair_coeff'][(pair_type, pair_type)]
+                else:
+                    raise RuntimeError('pair coefficient not defined')
                 sigma = float(sigma)*0.1
                 epsilon = kcal2kJ(float(epsilon))
                 output_ff['atomtypes'][output_type] = {
