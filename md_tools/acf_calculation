@@ -1,6 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
-Copyright (C) 2015 Jakub Krajniak <jkrajniak@gmail.com>
+Copyright (C) 2015,2017 Jakub Krajniak <jkrajniak@gmail.com>
 
 This file is distributed under free software licence:
 you can redistribute it and/or modify it under the terms of the
@@ -18,7 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import argparse
-from libs import bonds
+from md_libs import bonds
 import numpy
 import numpy as np
 import sys
@@ -55,16 +55,16 @@ def  calculate_end_end_acf(trajectory, max_tau):
     acf = np.zeros(max_tau)
     acf_error = np.zeros(max_tau)
     sumdist = 0.0
-    print 'Frames: 0..', max_t
-    print 'Max tau:', max_tau
+    print('Frames: 0..', max_t)
+    print('Max tau:', max_tau)
     # Go over time.
-    for m in xrange(max_tau):
+    for m in range(max_tau):
         sys.stdout.write('Tau: {}\r'.format(m))
         sys.stdout.flush()
         intermediate_results = []
-        for n in xrange(0, max_t - m):
+        for n in range(0, max_t - m):
              sumdist = 0.0
-             for i in xrange(N):
+             for i in range(N):
                  a1 = trajectory[n][i]
                  a2 = trajectory[n+m][i]
                  sumdist += np.dot(a1/np.linalg.norm(a1), a2/np.linalg.norm(a2))
@@ -79,29 +79,29 @@ def main():
 
     max_N = min([len(x) for x in data])
     if max_N < args.N:
-        print('max_N: {}, args.N: {}'.format(max_N, args.N))
+        print(('max_N: {}, args.N: {}'.format(max_N, args.N)))
         N = max_N
     else:
         N = args.N
 
     if not args.end:
         args.end = len(data)
-        print args.begin, args.end
+        print(args.begin, args.end)
     
     raw_data  = data[args.begin:args.end:args.step]
 
     print('Normalize vectors')
     data = np.zeros(raw_data.shape)
     norms = np.apply_along_axis(np.linalg.norm, 2, raw_data)
-    print data.shape, norms.shape
-    for i in xrange(data.shape[0]):
+    print(data.shape, norms.shape)
+    for i in range(data.shape[0]):
         data[i] = (raw_data[i].T / norms[i]).T
 
     args.dt *= args.step
     max_tau = args.max_tau / args.step
-    print('Traj length: {}'.format(len(data)))
-    print('dt: {}'.format(args.dt))
-    print('max_tau: {}'.format(max_tau))
+    print(('Traj length: {}'.format(len(data))))
+    print(('dt: {}'.format(args.dt)))
+    print(('max_tau: {}'.format(max_tau)))
     
     print('Calculating ACF...')
     #acf1, acf_errors = calculate_end_end_acf(data, max_tau)
@@ -116,7 +116,7 @@ def main():
     output = '{}acf_{}'.format(args.prefix, args.in_file)
     if args.output:
         output = args.output
-    print('Saving to {}...'.format(output))
+    print(('Saving to {}...'.format(output)))
     if args.csv:
         output += '.csv'
         numpy.savetxt(output, numpy.column_stack((time_column, output_data, acf_errors)))
