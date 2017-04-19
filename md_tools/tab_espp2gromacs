@@ -46,14 +46,12 @@ def _pair_convert(input_f, output_f, args):
 
 def main():
     args = _args()
-    input_f = open(args.input_file, 'r')
-    output_f = open(args.output_file, 'w')
 
     table_type2func = {
         'pair': _pair_convert,
     }
 
-    table_type2func[args.table_type](input_f, output_f, args)
+    table_type2func[args.table_type](args.input_file, args.output_file, args)
 
 
 if __name__ == '__main__':
