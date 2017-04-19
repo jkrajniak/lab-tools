@@ -192,7 +192,8 @@ def prepare_bonded_lists(top):
             if not b_params:
                 raise RuntimeError('Empty bond params is not supported yet')
             # tuple(['{:.3f}'.format(x) if x < 1.0 else '{:.1f}'.format(x) for x in map(float, b_params)])
-            key_params = tuple([int(float(b_params[0]))] + map(float, b_params[1:]))  
+            bp = ' '.join(b_params[1:]).split(';')[0].split()
+            key_params = tuple([int(float(b_params[0]))] + map(float, bp))
             if key_params not in coeff:
                 coeff[key_params] = btypeid
                 interaction_id = btypeid

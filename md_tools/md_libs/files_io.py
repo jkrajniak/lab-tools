@@ -1131,27 +1131,30 @@ class GROMACSTopologyFile(object):
     def _write_bondtypes(self):
         return_data = []
         for i in self.bondtypes:
-            for j, params in self.bondtypes[i].items():
-                return_data.append('{} {} {} {}'.format(i, j, params['func'], ' '.join(params['params'])))
+            if not isinstance(i, tuple):
+                for j, params in self.bondtypes[i].items():
+                    return_data.append('{} {} {} {}'.format(i, j, params['func'], ' '.join(params['params'])))
         return return_data
 
     def _write_angletypes(self):
         return_data = []
         for i in self.angletypes:
-            for j in self.angletypes[i]:
-                for k, params in self.angletypes[i][j].items():
-                    return_data.append('{} {} {} {} {}'.format(
-                        i, j, k, params['func'], ' '.join(params['params'])))
+            if not isinstance(i, tuple):
+                for j in self.angletypes[i]:
+                    for k, params in self.angletypes[i][j].items():
+                        return_data.append('{} {} {} {} {}'.format(
+                            i, j, k, params['func'], ' '.join(params['params'])))
         return return_data
 
     def _write_dihedraltypes(self):
         return_data = []
         for i in self.dihedraltypes:
-            for j in self.dihedraltypes[i]:
-                for k in self.dihedraltypes[i][j]:
-                    for l, params in self.dihedraltypes[i][j][k].items():
-                        return_data.append('{} {} {} {} {} {}'.format(
-                            i, j, k, l, params['func'], ' '.join(params['params'])))
+            if not isinstance(i, tuple):
+                for j in self.dihedraltypes[i]:
+                    for k in self.dihedraltypes[i][j]:
+                        for l, params in self.dihedraltypes[i][j][k].items():
+                            return_data.append('{} {} {} {} {} {}'.format(
+                                i, j, k, l, params['func'], ' '.join(params['params'])))
         return return_data
 
     def _write_bonds(self):  # pylint:disable=R0201
