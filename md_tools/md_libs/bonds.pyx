@@ -53,6 +53,16 @@ cdef inline np.ndarray fold_vec(np.ndarray d, np.ndarray box, np.ndarray half_bo
 
 
 cpdef list calculate_bond(np.ndarray atom_tuples, np.ndarray box, np.ndarray half_box):
+    """Calculate bond distance
+
+    Args:
+        atom_tuples: numpy array with the pairs of atoms.
+        box: numpy array with box size
+        half_box: numpy array with the half of box size
+
+    Returns:
+        The list of distances
+    """
     cdef list bonds = []
     cdef np.ndarray d
     cdef float val
