@@ -53,6 +53,16 @@ cdef inline np.ndarray fold_vec(np.ndarray d, np.ndarray box, np.ndarray half_bo
 
 
 cpdef list calculate_bond(np.ndarray atom_tuples, np.ndarray box, np.ndarray half_box):
+    """Calculate bond distance
+
+    Args:
+        atom_tuples: numpy array with the pairs of atoms.
+        box: numpy array with box size
+        half_box: numpy array with the half of box size
+
+    Returns:
+        The list of distances
+    """
     cdef list bonds = []
     cdef np.ndarray d
     cdef float val
@@ -200,7 +210,8 @@ cpdef tuple calculate_end_end_acf_single(np.ndarray trajectory, int tau):
     cdef double acf_error = 0.0
     cdef double sumdist = 0.0
     cdef list intermediate_results = []
-    
+    m = 0
+
     # Go over time.
     sys.stdout.write('Tau: {}\r'.format(tau))
     sys.stdout.flush()
@@ -272,7 +283,12 @@ cpdef tuple calculate_com_chains(np.ndarray traj, int chain_length, int chains, 
     return output, output_sys
 
 
-cpdef tuple calculate_msd_single(np.ndarray trj_com, np.ndarray trj_sys_com, np.ndarray box, int N, int r_every, int tau):
+cpdef tuple calculate_msd_single(
+        np.ndarray trj_com,
+        np.ndarray trj_sys_com,
+        np.ndarray box,
+        np.ndarray valid_types,
+        int N, int r_every, int tau):
     """Calculate MSD for given value of tau (m).
     Args:
         trj_com: numpy array with trajectory of com.
@@ -281,18 +297,19 @@ cpdef tuple calculate_msd_single(np.ndarray trj_com, np.ndarray trj_sys_com, np.
         N: number of chains.
         tau: Given tau.
         r_every: restart every .. time frame.
+        valid_types: list of types
     Returns:
         MSD and MSD error
     """
-    cdef int n, j, i
+    cdef int n, j, i, num_particles1, num_particles2
     cdef double sumdist
     cdef int max_t = len(trj_com)
-    
+
     #cdef np.ndarray inv_box = 1.0/box
 
     sys.stdout.write('tau: %d\n' % tau)
 
-    cdef np.ndarray pos1, pos2
+    cdef np.ndarray pos1, pos2, d
     cdef list intermediate_results
 
     ror = ['-', '\\', '|', '/', '-', '\\', '|', '/', '-', '\\']
@@ -300,13 +317,21 @@ cpdef tuple calculate_msd_single(np.ndarray trj_com, np.ndarray trj_sys_com, np.
     intermediate_results = []
     for n in xrange(0, max_t - tau, r_every):  # starting from t=n ... max_t - tau
         sumdist = 0.0
-        for i in xrange(N):
-            pos1 = trj_com[n+tau][i] - trj_sys_com[n+tau]
-            pos2 = trj_com[n][i] - trj_sys_com[n]
-            d = pos2 - pos1
-            #d -= np.round(d*inv_box)*box
-            sumdist += d.dot(d)
-        intermediate_results.append(sumdist / N)
+        num_particles1 = np.count_nonzero(valid_types[n+tau])
+        num_particles2 = np.count_nonzero(valid_types[n])
+        assert num_particles1 == num_particles2
+        print((num_particles1, num_particles2, num_particles1 == num_particles2))
+        pos1 = trj_com[n+tau][valid_types[n+tau]] - trj_sys_com[n+tau]
+        pos2 = trj_com[n][valid_types[n]] - trj_sys_com[n]
+        d = pos2 - pos1
+        sumdist += np.average(np.einsum('ij,ij->i', d, d))
+        #for i in xrange(N):
+        #    pos1 = trj_com[n+tau][i] - trj_sys_com[n+tau]
+        #    pos2 = trj_com[n][i] - trj_sys_com[n]
+        #    d = pos2 - pos1
+        #    #d -= np.round(d*inv_box)*box
+        #    sumdist += d.dot(d)
+        intermediate_results.append(sumdist)
         #sys.stdout.write('%s\r' % ror[n % 10])
         #sys.stdout.flush()
     #sys.stdout.write('\n')

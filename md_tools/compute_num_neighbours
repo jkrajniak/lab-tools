@@ -139,7 +139,7 @@ def main():
     result = p.map(get_avg_nb_, frames)
 
     result = np.array(result)
-    np.savetxt(args.output, result)
+    np.savetxt(args.output, result, header='frame avg_num_nb')
     print('Saved data {}'.format(args.output))
     print('Average neighbours {}'.format(np.average(result, axis=0)))
 

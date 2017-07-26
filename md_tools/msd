@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Copyright (C) 2015 Jakub Krajniak <jkrajniak@gmail.com>
+Copyright (C) 2015-2017 Jakub Krajniak <jkrajniak@gmail.com>
 
 This file is distributed under free software licence:
 you can redistribute it and/or modify it under the terms of the
@@ -40,9 +40,10 @@ def _args():
     parser.add_argument('--nt', default=1, type=int)
     parser.add_argument('--every-frame', default=1, type=int, dest='step')
     parser.add_argument('--restart-every', default=1, type=int, dest='r_every')
-    parser.add_argument('--remove_sys_com', choices=('yes', 'no'), default='yes', dest='remove_com', 
+    parser.add_argument('--remove_sys_com', choices=('yes', 'no'), default='yes', dest='remove_com',
                         help='Substracts movement of whole system')
     parser.add_argument('--with-com', choices=('yes', 'no'), default='yes', help='Calculates MSD for COM')
+    parser.add_argument('--no_sort', action='store_true', default=False)
     parser.add_argument('--types', help='Valid types (comma separated list of particle types)', type=str)
     parser.add_argument('in_file')
 
@@ -54,11 +55,11 @@ def calculate_com(chain_length, masses, chains, trj):
     return bonds.calculate_com_chains(trj, chain_length, chains, masses[:chain_length], tot_mass)
 
 
-def clip_data(input, start, stop, step=1, raw=False):
+def clip_data(inarr, start, stop, step=1, raw=False):
     if start == 0 and stop == -1 and step == 1:
-        d = input
+        d = inarr
     else:
-        d = input[start:stop:step]
+        d = inarr[start:stop:step]
     if raw:
         return d
     else:
@@ -68,15 +69,15 @@ def clip_data(input, start, stop, step=1, raw=False):
 if __name__ == '__main__':
     args = _args()
     data = h5py.File(args.in_file, 'r')
-    
+
     number_of_chains = args.number_of_chains
-    
+
     ids = None
-    if 'id' in data['/particles/{}/'.format(args.group)].keys():
+    if 'id' in data['/particles/{}/'.format(args.group)].keys() and not args.no_sort:
         print('Found id/ dataset, columns will be sorted.')
         ids = clip_data(data['/particles/{}/id/value'.format(args.group)], args.begin, args.end, args.step, raw=True)
-    
-    print('Trajectory shape: {}'.format(data['/particles/{}/position/value'.format(args.group)].shape))    
+
+    print('Trajectory shape: {}'.format(data['/particles/{}/position/value'.format(args.group)].shape))
 
     trj = clip_data(data['/particles/{}/position/value'.format(args.group)], args.begin, args.end, args.step)
     if ids is not None:
@@ -86,7 +87,7 @@ if __name__ == '__main__':
         box = numpy.array(box['value'][0])
     else:
         box = numpy.array(box)
-    
+
     if 'image' in data['/particles/{}'.format(args.group)].keys():
         print('Found image dataset, computing absolute trajectory...')
         image = numpy.array(data['/particles/{}/image/value'.format(args.group)][args.begin:args.end:args.step])
@@ -95,17 +96,20 @@ if __name__ == '__main__':
         trj = trj + box*image
 
     # TODO: assumption that masses does not change during simulation.
-    masses = data['/particles/{}/mass'.format(args.group)]
-    if 'value' in masses:
-        masses = masses['value']
-        if ids is not None:
-            masses = files_io.sort_h5md_array(masses, ids, 1)
-        print('Warning!: only for time-independent masses')
-        masses = masses[0]
-    masses = numpy.array(masses)
+    try:
+        masses = data['/particles/{}/mass'.format(args.group)]
+        if 'value' in masses:
+            masses = masses['value']
+            if ids is not None:
+                masses = files_io.sort_h5md_array(masses, ids, 1)
+            print('Warning!: only for time-independent masses')
+            masses = masses[0]
+        masses = numpy.array(masses)
+    except KeyError:
+        masses = numpy.ones(trj.shape[1])
 
     species = None
-    valid_types = None
+    valid_types = numpy.ones((trj.shape[0], trj.shape[1]), dtype=bool)
     if 'species' in data['/particles/{}'.format(args.group)]:
         species = data['/particles/{}/species'.format(args.group)]
         if 'value' in species:
@@ -122,21 +126,21 @@ if __name__ == '__main__':
             print('Calculating MSD only for particle types: {}'.format(typs))
     elif args.types is not None:
         raise RuntimeError('Species dataset not found, though --types defined')
-    
-    # Filter data againts types. 
-    if valid_types is not None:
-        print('Found valid types, filtering data...')
-        old_shape = trj.shape
-        masses = masses[valid_types[0]]
-        trj = trj[valid_types].reshape(old_shape[0], args.chain_length*number_of_chains, 3)
-        print('Old trj.shape={}, new_shape={}'.format(old_shape, trj.shape))
+
+    # Filter data againts types.
+#     if valid_types is not None:
+#         print('Found valid types, filtering data...')
+#         old_shape = trj.shape
+#         masses = masses[valid_types[0]]
+#         trj = trj[valid_types].reshape(old_shape[0], args.chain_length*number_of_chains, 3)
+#         print('Old trj.shape={}, new_shape={}'.format(old_shape, trj.shape))
 
     dt = (data['/particles/{}/position/time'.format(args.group)][args.begin:args.end:args.step][2]
           - data['/particles/{}/position/time'.format(args.group)][args.begin:args.end:args.step][1])
 
-    data.close()    
+    data.close()
 
-    max_tau = args.max_tau / dt    
+    max_tau = args.max_tau / dt
 
     nt = args.nt
     args.begin = 0
@@ -148,8 +152,8 @@ if __name__ == '__main__':
     print('Chain length {}'.format(args.chain_length))
     print('dt: {}'.format(dt))
     print('max_tau: {}'.format(max_tau*dt))
-    
-    if args.with_com == 'yes': 
+
+    if args.with_com == 'yes':
         print('Calculating COM for chains with {} processors'.format(args.nt))
         func = functools.partial(calculate_com, args.chain_length, masses, number_of_chains)
         pool = mp.Pool(processes=args.nt)
@@ -168,20 +172,20 @@ if __name__ == '__main__':
         traj_sys_com = numpy.zeros(shape=(len(traj_com), 3), dtype=float)
 
     print('Calculating MSD...')
-    func = functools.partial(bonds.calculate_msd_single, traj_com, traj_sys_com, box, number_of_chains, args.r_every)
+    func = functools.partial(bonds.calculate_msd_single, traj_com, traj_sys_com, box, valid_types, number_of_chains, args.r_every)
     pool = mp.Pool(processes=args.nt)
     # Each of process gets single tau, data are replicted among CPUs.
     input_data = numpy.arange(0.0, max_tau+1)
     results = pool.map(func, input_data)
     pool.close()
     pool.join()
-    
+
     print('Collecting data...')
     msd, msd_error = numpy.zeros(max_tau+1), numpy.zeros(max_tau+1)
     for t in range(int(max_tau)+1):
         msd[t] = results[t][0]
         msd_error[t] = results[t][1]
-    
+
     time_column = numpy.arange(0.0, len(msd)*dt, dt)
 
     output = '{}msd_{}'.format(args.output_prefix, ''.join(args.in_file.split('.')[0:-1]))

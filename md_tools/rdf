@@ -139,10 +139,14 @@ def gets_rdf(h5, type1, type2, index_file, cutoff, bins=100, begin=0, end=-1, nt
     print pos.shape[0]
     frames = range(begin, pos.shape[0] if end == -1 else end)
 
-    p = Pool(nt)
+    if nt > 1:
+        p = Pool(nt)
 
     get_rdf = functools.partial(get_single_rdf, h5.filename, type1, type2, index_file, cutoff, bins)
-    results = p.map(get_rdf, frames)
+    if nt > 1:
+        results = p.map(get_rdf, frames)
+    else:
+        results = map(get_rdf, frames)
 
     x = results[0][1]
     result = np.array(np.sum([np.nan_to_num(k[0]) for k in results], axis=0))
