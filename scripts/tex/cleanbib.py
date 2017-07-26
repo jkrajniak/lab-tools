@@ -17,7 +17,7 @@ if __name__ == '__main__':
         bib_database = bibtexparser.load(bibtex_file, parser=parser)
 
         for entry in bib_database.entries:
-            for k in ('file', 'annote', 'abstract', 'url', 'file'):
+            for k in ('file', 'annote', 'abstract', 'url', 'file', 'link'):
                 entry.pop(k,None)
 
         bibtex_string = bibtexparser.dumps(bib_database)

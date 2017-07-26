@@ -1,7 +1,7 @@
 Content:
 ==========
 
- - `scripts` - some more or less usefull scripts for daily work with HPC cluster or VOTCA.
+ - `scripts` - some more or less usefull scripts for daily work with HPC cluster, VOTCA or LaTeX ;-)
  - `h5md` - tools for handling HDF5 files with H5MD format
  - `md-tools` - set of Python scripts for data analysing of MD trajectory
 
@@ -15,6 +15,11 @@ In order to use some of the tools here, you have to compile Cython libraries fol
 cd md_tools
 python setup.py build_ext --inplace
 ```
+
+Note
+=====
+
+Currently only Python 2.7.x is supported.
 
 
 [![DOI](https://zenodo.org/badge/20122/MrTheodor/lab-tools.svg)](https://zenodo.org/badge/latestdoi/20122/MrTheodor/lab-tools)
