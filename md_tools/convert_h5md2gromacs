@@ -338,6 +338,9 @@ def prepare_gromacs_topology(g, settings, itp_file, args):
 
 def prepare_coordinate(file_name, graph):
     """Prepare .gro file based on the graph structure with positions from given frame."""
+    if not graph.graph['positions']:
+        print('Warning! H5MD file does not contains positions of atoms, skipping coordinate file')
+        return False
     out_coordinate = files_io.GROFile(file_name)
     out_coordinate.box = graph.graph['box']
     for at_id, at_data in graph.node.items():
@@ -416,8 +419,10 @@ def build_graph(h5, settings, timestep):
         positions = np.array([
             x for x in h5['/particles/{}/position/value'.format(settings.h5md_file.group)][positions_index]
         ])
+        g.graph['positions'] = True
     else:
         positions = None
+        g.graph['positions'] = False
     mass = np.array([
         x for x in h5['/particles/{}/mass/value'.format(settings.h5md_file.group)][positions_index]
     ])
