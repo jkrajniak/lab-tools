@@ -520,6 +520,70 @@ class PDBFile(CoordinateFile):
             self.atoms_updated = False
 
 
+class XYZFile(CoordinateFile):
+    scale_factor = 0.1  # usually XYZ are in anstroms, convert to nm
+
+    def read(self):
+        """Reads the file and return atom list."""
+
+        self.file = open(self.file_name, 'r')
+        if not self.content:
+            self.content = self.file.readlines()
+
+        number_of_atoms = int(self.content[0])
+        self.title = self.content[1].replace('\r\n', '').replace('\n', '')
+
+        logger.info('Reading XYZ file {}'.format(self.file_name))
+
+        at_id = 1  # XYZ does not have notion about atom id
+        chain_name = 'DUMMY'
+        for line in self.content[2:number_of_atoms+2]:
+            t = line.split()
+            at_name = t[0]
+            pos_x = float(t[1]) * self.scale_factor
+            pos_y = float(t[2]) * self.scale_factor
+            pos_z = float(t[3]) * self.scale_factor
+            self.atoms[at_id] = Atom(
+                atom_id=at_id,
+                name=at_name,
+                chain_name=chain_name,
+                chain_idx=1,
+                position=numpy.array([pos_x, pos_y, pos_z]))
+            self.fragments[chain_name][at_ame] = self.atom[at_id]
+            if chain_name not in self.chains:
+                self.chains[chain_name] = {}
+            if chain_idx not in self.chains[chain_name]:
+                self.chains[chain_name][chain_idx] = self.atoms[at_id]
+
+        # No information about box
+        self.box = numpy.array([0, 0, 0])
+
+    def write(self, file_name=None, force=False, append=False):
+        """Writes the content to the output file.
+
+        Args:
+            file_name: The new file name, otherwise the old one will be used.
+            force: Force to save even if any atoms were not updated.
+            append: If set to true then new frame will be added (useful for VMD).
+        """
+
+        output = []
+        output.append('{}'.format(len(self.atoms)))
+        output.append(self.title if self.title else '')
+        for at_id in sorted(self.atoms):
+            at = self.atoms[at_id]
+            output.append(
+                '{} {:8.3f} {:8.3f} {:8.3f}'.format(
+                    at.name,
+                    at.position[0],
+                    at.position[1],
+                    at.position[2]))
+        output.append('')
+        write_file_path = prepare_path(file_name if file_name else self.file_name)
+        with open(write_file_path, 'w') as output_file:
+            output_file.writelines('\n'.join(output))
+        self.atoms_updated = False
+
 class GROMACSTopologyFile(object):
     """Very basic representation of topology file."""
     def __init__(self, file_name):
