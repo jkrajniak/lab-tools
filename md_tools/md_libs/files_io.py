@@ -846,6 +846,7 @@ class GROMACSTopologyFile(object):
         visited_sections = set()
         section_name = None
         previous_section = None
+        new_content = []
         for line in self.content:
             line = line.strip()
             if 'include' in line:
@@ -964,6 +965,7 @@ class GROMACSTopologyFile(object):
     def _parse_atomtypes(self, raw_data):
         #  EPO_C1 C 6 14.027000 A 0.3850 0.58576
         raw_line = ' '.join(raw_data)
+        raw_line = raw_line.split(';')[0]
         before_ptype, at_type, after_ptype = re.split('\s+(A|S|D|V)+\s+', raw_line)
 
         before_ptype = before_ptype.split()
@@ -986,7 +988,8 @@ class GROMACSTopologyFile(object):
                 mass = before_ptype.pop(0)
                 charge = before_ptype.pop(0)
 
-        sigma, epsilon = after_ptype.split()
+        ts = after_ptype.split()
+        sigma, epsilon = ts
 
         if at_type not in ['A', 'S', 'D', 'V']:
             print('Wrong particle type {} in atomtypes line: {}'.format(at_type, raw_data))
