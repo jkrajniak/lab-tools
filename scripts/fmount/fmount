@@ -39,15 +39,15 @@ else
   MOUNT_DIR="$PWD/$ARG1"
 fi
 
-if [ ! -d $MOUNT_DIR ]; then
-  echo "Error: Mount dir $MOUNT_DIR does not exists"
-  exit 1
-fi
+#if [ ! -d $MOUNT_DIR ]; then
+#  echo "Error: Mount dir $MOUNT_DIR does not exists"
+#  exit 1
+#fi
 
 . $CONFIG  &> /dev/null
 
 if [[ -z $DEFAULTS ]]; then
-  DEFAULTS=""
+  DEFAULTS="noexec"
 fi
 
 STATUS=$(cat $CONFIG | \
@@ -63,12 +63,13 @@ STATUS=$(cat $CONFIG | \
 
   if [ "$LOCAL_DIR" == "$MOUNT_DIR" ]; then
     if [ "X$OPT" == "X" ]; then
-      sshfs $REMOTE_POINT $LOCAL_DIR
+      sshfs -o reconnect $REMOTE_POINT $LOCAL_DIR
     else
       OPT="`echo $OPT | sed -e \"s#defaults#$DEFAULTS#\"`"
       sshfs -o $OPT $REMOTE_POINT $LOCAL_DIR
     fi
-    if [ "$?" == "1" ]; then
+    RET_CODE=$?
+    if [ "$RET_CODE" == "1" ]; then
       echo 2
     else
       echo 1
@@ -83,5 +84,7 @@ case $STATUS in
     exit 1
     ;;
   1) exit 0;;
-  2) echo "Error: Unable to mount"; exit 1;;
+  2) echo "Error: Unable to mount";
+     fusermount -u $MOUNT_DIR
+     exit 1;;
 esac

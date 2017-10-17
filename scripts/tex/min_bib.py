@@ -30,7 +30,7 @@ def main():
         bib_database = bibtexparser.load(bibtex_file, parser=parser)
 
         citation_keys = set()
-        re_cite = re.compile('cite\{([0-9A-Za-z,\s]+)\}')
+        re_cite = re.compile('cite\{([0-9A-Za-z_,\s]+)\}')
         with open(texfile) as tex_file:
             for l in tex_file:
                 labels = re_cite.findall(l)

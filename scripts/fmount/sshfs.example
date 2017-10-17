@@ -1,0 +1,5 @@
+# Remote mount point local mount point
+DEFAULTS="auto_unmount,reconnect,ServerAliveCountMax=3"
+# Settings
+hostname:. defaults /home/teodor/sshfs/newton-cs
+hostname:/remote_path/stg ro /local_path/stg
