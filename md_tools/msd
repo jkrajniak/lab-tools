@@ -24,6 +24,8 @@ from md_libs import files_io
 import h5py
 import multiprocessing as mp
 import numpy
+import sys
+import numpy as np
 
 
 def _args():
@@ -65,6 +67,45 @@ def clip_data(inarr, start, stop, step=1, raw=False):
     else:
         return numpy.array(d)
 
+def calculate_msd_single(trj_com, trj_sys_com, box, valid_types, N, r_every, tau):
+    """Calculate MSD for given value of tau (m).
+    Args:
+        trj_com: numpy array with trajectory of com.
+        trj_sys_com: numpy array with trajectory of system com.
+        box: box size.
+        N: number of chains.
+        tau: Given tau.
+        r_every: restart every .. time frame.
+        valid_types: list of types
+    Returns:
+        MSD and MSD error
+    """
+    max_t = len(trj_com)
+
+    #cdef np.ndarray inv_box = 1.0/box
+
+    sys.stdout.write('tau: %d\n' % tau)
+
+    intermediate_results = []
+    for n in xrange(0, int(max_t - tau), r_every):  # starting from t=n ... max_t - tau
+        sumdist = 0.0
+        num_particles1 = np.count_nonzero(valid_types[n+tau])
+        num_particles2 = np.count_nonzero(valid_types[n])
+        assert num_particles1 == num_particles2
+        pos1 = trj_com[n+tau][valid_types[n+tau]] - trj_sys_com[n+tau]
+        pos2 = trj_com[n][valid_types[n]] - trj_sys_com[n]
+        d = pos2 - pos1
+        sumdist += np.average(np.einsum('ij,ij->i', d, d))
+        #for i in xrange(N):
+        #    pos1 = trj_com[n+tau][i] - trj_sys_com[n+tau]
+        #    pos2 = trj_com[n][i] - trj_sys_com[n]
+        #    d = pos2 - pos1
+        #    #d -= np.round(d*inv_box)*box
+        #    sumdist += d.dot(d)
+        intermediate_results.append(sumdist)
+        #sys.stdout.write('%s\r' % ror[n % 10])
+        #sys.stdout.flush()
+    return np.average(intermediate_results), np.std(intermediate_results, ddof=1)
 
 if __name__ == '__main__':
     args = _args()
@@ -77,9 +118,8 @@ if __name__ == '__main__':
         print('Found id/ dataset, columns will be sorted.')
         ids = clip_data(data['/particles/{}/id/value'.format(args.group)], args.begin, args.end, args.step, raw=True)
 
-    print('Trajectory shape: {}'.format(data['/particles/{}/position/value'.format(args.group)].shape))
-
     trj = clip_data(data['/particles/{}/position/value'.format(args.group)], args.begin, args.end, args.step)
+    print('Trajectory shape: {}'.format(trj.shape))
     if ids is not None:
         trj = files_io.sort_h5md_array(trj, ids)
     box = data['/particles/{}/box/edges'.format(args.group)]
@@ -90,7 +130,7 @@ if __name__ == '__main__':
 
     if 'image' in data['/particles/{}'.format(args.group)].keys():
         print('Found image dataset, computing absolute trajectory...')
-        image = numpy.array(data['/particles/{}/image/value'.format(args.group)][args.begin:args.end:args.step])
+        image = clip_data(data['/particles/{}/image/value'.format(args.group)], args.begin, args.end, args.step)
         if ids is not None:
             image = files_io.sort_h5md_array(image, ids)
         trj = trj + box*image
@@ -132,6 +172,8 @@ if __name__ == '__main__':
 #         print('Found valid types, filtering data...')
 #         old_shape = trj.shape
 #         masses = masses[valid_types[0]]
+#         print(trj.shape)
+#         print(trj[valid_types].shape)
 #         trj = trj[valid_types].reshape(old_shape[0], args.chain_length*number_of_chains, 3)
 #         print('Old trj.shape={}, new_shape={}'.format(old_shape, trj.shape))
 
@@ -172,7 +214,7 @@ if __name__ == '__main__':
         traj_sys_com = numpy.zeros(shape=(len(traj_com), 3), dtype=float)
 
     print('Calculating MSD...')
-    func = functools.partial(bonds.calculate_msd_single, traj_com, traj_sys_com, box, valid_types, number_of_chains, args.r_every)
+    func = functools.partial(calculate_msd_single, traj_com, traj_sys_com, box, valid_types, number_of_chains, args.r_every)
     pool = mp.Pool(processes=args.nt)
     # Each of process gets single tau, data are replicted among CPUs.
     input_data = numpy.arange(0.0, max_tau+1)

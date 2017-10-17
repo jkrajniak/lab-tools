@@ -39,7 +39,7 @@ def _args():
     parser.add_argument('-b', default=0, type=int)
     parser.add_argument('-e', default=-1, type=int)
     parser.add_argument('--cutoff', default=-1, type=float)
-    parser.add_argument('--normalize', default=True, type=int)
+    parser.add_argument('--no_normalize', default=False, action='store_true')
     parser.add_argument('--plot', action='store_true', default=False)
     parser.add_argument('--output', default=None, help='Output file')
     parser.add_argument('--nt', default=4, type=int)
@@ -47,7 +47,7 @@ def _args():
     return parser.parse_args()
 
 
-def get_single_rdf(h5file, type1, type2, index_file, cutoff, bins, frame):
+def get_single_rdf(h5file, type1, type2, index_file, cutoff, bins, do_norm, frame):
     h5 = h5py.File(h5file, 'r', driver='stdio', libver='latest')
 
     pids = None
@@ -127,13 +127,14 @@ def get_single_rdf(h5file, type1, type2, index_file, cutoff, bins, frame):
 
     phi = npart2/vol
     norm = phi*dx*npart1
-    tmp_r /= norm
+    if do_norm:
+        tmp_r /= norm
     result = np.nan_to_num(tmp_r)
 
     return result, dx*(np.arange(0, bins)+0.5)
 
 
-def gets_rdf(h5, type1, type2, index_file, cutoff, bins=100, begin=0, end=-1, nt=4):
+def gets_rdf(h5, type1, type2, index_file, cutoff, bins=100, begin=0, end=-1, nt=4, do_norm=True):
     pos = h5['/particles/atoms/position/value']
 
     print pos.shape[0]
@@ -142,7 +143,7 @@ def gets_rdf(h5, type1, type2, index_file, cutoff, bins=100, begin=0, end=-1, nt
     if nt > 1:
         p = Pool(nt)
 
-    get_rdf = functools.partial(get_single_rdf, h5.filename, type1, type2, index_file, cutoff, bins)
+    get_rdf = functools.partial(get_single_rdf, h5.filename, type1, type2, index_file, cutoff, bins, do_norm)
     if nt > 1:
         results = p.map(get_rdf, frames)
     else:
@@ -150,6 +151,7 @@ def gets_rdf(h5, type1, type2, index_file, cutoff, bins=100, begin=0, end=-1, nt
 
     x = results[0][1]
     result = np.array(np.sum([np.nan_to_num(k[0]) for k in results], axis=0))
+    # This 
     norm = float(len(frames))
 
     return result/norm, x
@@ -178,7 +180,7 @@ def main():
         if args.type2:
             type2 = map(int, args.type2.split(','))
 
-    result, x = gets_rdf(h5, type1, type2, args.n, args.cutoff, args.bins, args.b, args.e, args.nt)
+    result, x = gets_rdf(h5, type1, type2, args.n, args.cutoff, args.bins, args.b, args.e, args.nt, not args.no_normalize)
     if args.plot:
         from matplotlib import pyplot as plt
         plt.plot(x, result)
