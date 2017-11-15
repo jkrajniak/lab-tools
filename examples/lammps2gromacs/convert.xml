@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<settings>
+    <types>
+        1:AMI_C6 2:EPO_C5 3:AMI_C7 4:AMI_C4 5:EPO_C4 6:AMI_C1 7:EPO_C2 8:AMI_C3 9:EPO_C1 10:EPO_C3
+        11:AMI_C2 12:AMI_C8 13:EPO_C6 14:AMI_C5 15:EPO_C7 16:AMI_N1 17:AMI_O1 18:EPO_O2 19:EPO_O1
+        20:EPO_C1 21:AMI_N1
+    </types>
+    <molecules nbeads="25" nmols="180" name="EPO">
+        O1 C1 C2 C3 O2 C61 C62 C63 C64 C65 C66 C4 C5
+        C6 C71 C72 C73 C74 C75 C76 O3 C7 C8 O4 C9
+    </molecules>
+    <molecules nbeads="16" nmols="20" name="HDD">
+        C1 O1 C2 C3 O2 C4 C5 C6 C7 C8 C9 O3 C10 C11 O4 C12
+    </molecules>
+    <molecules nbeads="12" nmols="100" name="IPD">
+        C1 C2 C3 C4 C5 C6 N1 C7 N2 C8 C9 C10
+    </molecules>
+    <system name="EPO" nrexcl="3" />
+</settings>

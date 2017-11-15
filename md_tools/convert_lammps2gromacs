@@ -187,8 +187,20 @@ def lammps2gromacs_ff(lmp_input, settings):
             cutoff = lmp_input.force_field['pair_style'][1]
             print('Pair style {}, cutoff: {}'.format(pair_style, cutoff))
             for pair_type, output_type in settings.typeid2name.items():
-                mass = lmp_input._mass_type[pair_type]
-                charge = 0.0  # lmp_input.atom_charges[pair_type]
+                try:
+                    mass = lmp_input._mass_type[pair_type]
+                except KeyError as ex:
+                    print(('Could not find mass value for type {} (GROMACS type: {})'
+                           ' check your LAMMPS data file').format(pair_type, output_type))
+                    raise ex
+                try:
+                    #charge = lmp_input.atom_charges[pair_type]
+                    charge = 0.0
+                    pass
+                except KeyError as ex:
+                    print(('Could not find charge value for type {} (GROMACS type: {})'
+                           ' check your LAMMPS data file').format(pair_type, output_type))
+                    raise ex
                 if 'pair' in lmp_input.force_field:
                     epsilon, sigma = lmp_input.force_field['pair'][pair_type]
                 elif 'pair_coeff' in lmp_input.force_field:
