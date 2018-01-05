@@ -1,0 +1,91 @@
+# Bulk EPOXY monomers
+
+units           real
+atom_style      full
+bond_style      harmonic
+angle_style     harmonic
+dihedral_style  nharmonic
+improper_style  cvff
+pair_style      lj/cut/coul/long 12.0 12.0
+special_bonds   lj/coul 0.0 0.0 0.5
+dielectric      1
+kspace_style    pppm 1.0e-4
+pair_modify     tail yes
+dimension       3
+timestep        1.0
+boundary        p p p
+read_data       data.eq.10000000
+#velocity        all create 300 87287 loop geom
+#neighbor        3.0 bin
+
+# Common variables
+variable pdamp equal 1000.0
+variable pulldir index x
+
+if "${pulldir} == x" then &
+    "variable tmp equal lx" &
+    "variable press1 index y" &
+    "variable press2 index z" &
+elif "${pulldir} == y" &
+    "variable tmp equal ly" &
+    "variable press1 index x" &
+    "variable press2 index z" &
+elif "${pulldir} == z" &
+    "variable tmp equal lz" &
+    "variable press1 index x" &
+    "variable press2 index y"
+
+
+# Store final cell length for strain calculations
+variable Lx equal ${tmp}
+variable tmp1 equal ly
+variable Ly equal ${tmp1}
+variable tmp2 equal lz
+variable Lz equal ${tmp2}
+print "Initial Length, Lx: ${Lx} Ly: ${Ly} Lz: ${Lz}"
+print "pull dir: ${pulldir} press: ${press1} ${press2}"
+
+reset_timestep 0
+
+fix        1 all npt temp 300 300 100.0 ${press1} 1.0 1.0 ${pdamp} ${press2} 1.0 1.0 ${pdamp}
+variable   srate equal 0.01  # 1% per 1e6 steps
+variable   srate1 equal "v_srate / 1.0e6"
+print "Srate: ${srate1}"
+print "pdam: ${pdamp}"
+
+## Output strain and stress info to file
+## for units metal, pressure is in [bars] = 100 [kPa] = 1/10000 [GPa]
+variable strainx equal "(lx - v_Lx)/v_Lx"
+variable strainy equal "(ly - v_Ly)/v_Ly"
+variable strainz equal "(lz - v_Lz)/v_Lz"
+if "${pulldir} == x" then &
+"variable strain equal v_strainx" &
+elif "${pulldir} == y" &
+"variable strain equal v_strainy" &
+elif "${pulldir} == z" &
+"variable strain equal v_strainz"
+
+print "$(v_strain)"
+
+thermo          1000
+thermo_style    custom time pe etotal temp press density vol lx ly lz
+
+###### strain 0
+fix def1 all print 500 "$(step) $(v_strain) $(pxx) $(pyy) $(pzz) $(lx) $(ly) $(lz) $(pe) $(ebond) $(eangle) $(edihed) $(eimp) $(epair) $(v_strainx) $(v_strainy) $(v_strainz)" file stress_strain_${pdamp}.txt screen no title "# step strain pxx pyy pzz lx ly lz pe ebond eangle edihed eimp epair strainx strainy strainz"
+
+## DEFORMATION
+
+fix 2 all deform 1 ${pulldir} erate ${srate1} units box remap x
+
+#restart 1000000 restart2.mpiio
+write_data data.substep.0
+
+variable dfloop loop 10
+
+label df
+run 1000000
+write_data data.substep.${dfloop}
+next dfloop
+jump SELF df
+
+write_data data.last.*
