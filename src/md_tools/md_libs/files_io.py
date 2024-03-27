@@ -1543,6 +1543,29 @@ class LammpsReader(object):
 
         return output_graph
 
+    def get_simple_graph(self):
+        output_graph = networkx.Graph(box=(self.box['x'], self.box['y'], self.box['z']))
+        for at_id, lmp_at in self.atoms.items():
+            atom_type = lmp_at['atom_type']
+            mol_idx = lmp_at['res_id']
+            position = lmp_at['position']
+            output_graph.add_node(
+                at_id,
+                position=position,
+                atom_type=atom_type,
+                mol_idx=mol_idx
+            )
+        # Adding edges
+        for bond_id, bond_list in self.topology['bonds'].items():
+            for b1, b2 in bond_list:
+                output_graph.add_edge(b1, b2, bond_type=bond_id)
+
+        # Updates degree
+        for n_id in output_graph.nodes():
+            output_graph.nodes[n_id]['degree'] = output_graph.degree(n_id)
+
+        return output_graph
+
     # Parsers section
     def _read_header(self, input_line):
         """Parses header of data file."""
