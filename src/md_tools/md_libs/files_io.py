@@ -28,7 +28,7 @@ import sys
 import warnings
 
 try:
-    import networkx
+    import networkx as nx
 except ImportError:
     warnings.warn("networkx not found, .get_graph() method will not be available")
 
@@ -700,7 +700,7 @@ class GROMACSTopologyFile(object):
 
     def get_graph(self):
         """Returns graph."""
-        output_graph = networkx.Graph(box=None)
+        output_graph = nx.Graph(box=None)
         for at_id, g_at in self.atoms.items():
             output_graph.add_node(
                 at_id,
@@ -1497,13 +1497,13 @@ class LammpsReader(object):
                     self.current_section = None
 
     def get_graph(self, settings):
-        """Creates networkx.Graph object from coordinate and topology data.
+        """Creates nx.Graph object from coordinate and topology data.
 
         Args:
             settings: The settings object.
 
         Returns:
-            networkx.Graph object. Each of node has attributes:
+            nx.Graph object. Each of node has attributes:
                 - name: The name of atom.
                 - res_id: The id of molecule.
                 - chain_name: The name of molecule.
@@ -1515,7 +1515,7 @@ class LammpsReader(object):
         """
         type2chain_name = settings.type2chain
         name_seq = settings.name_seq
-        output_graph = networkx.Graph(box=(self.box['x'], self.box['y'], self.box['z']))
+        output_graph = nx.Graph(box=(self.box['x'], self.box['y'], self.box['z']))
         seq_idx = {k: 0 for k in name_seq}
         for at_id, lmp_at in self.atoms.items():
             chain_name = type2chain_name[lmp_at['atom_type']]
@@ -1544,7 +1544,7 @@ class LammpsReader(object):
         return output_graph
 
     def get_simple_graph(self):
-        output_graph = networkx.Graph(box=(self.box['x'], self.box['y'], self.box['z']))
+        output_graph = nx.Graph(box=(self.box['x'], self.box['y'], self.box['z']))
         for at_id, lmp_at in self.atoms.items():
             atom_type = lmp_at['atom_type']
             mol_idx = lmp_at['res_id']
@@ -1565,6 +1565,65 @@ class LammpsReader(object):
             output_graph.nodes[n_id]['degree'] = output_graph.degree(n_id)
 
         return output_graph
+
+    def write(self, g: nx.Graph, out_path: str) -> object:
+        logger.info("Processing ATOM information ...")
+        funcinfo = [g.degree(n) + 1 for n in g.nodes()]
+        ogger.info("Processing BOND information ...")
+        bondinfo = genBondInfo(G, args.numAtoms, args.monFrac)
+        print("Processing ANGLE information ...")
+        angleinfo = genAngleInfo(G, args.numAtoms, args.monFrac)
+        totalAtoms = args.numAtoms
+        groupA = int(args.numAtoms * args.monFrac)
+        coord = np.loadtxt(args.xyzFile)
+        print("Writing LAMMPS data file ...")
+        with open(args.samPath + '/' + '{}.lmp'.format(args.fileName), 'w') as datainfo:
+            datainfo.write('Polymer Network System\n')
+            datainfo.write('\n')
+            datainfo.write('{} atoms\n'.format(totalAtoms))
+            datainfo.write('{} bonds\n'.format(len(bondinfo[0])))
+            datainfo.write('{} angles\n'.format(len(angleinfo[0])))
+            datainfo.write('\n')
+            datainfo.write('5 atom types\n')
+            datainfo.write('3 bond types\n')
+            datainfo.write('4 angle types\n')
+            datainfo.write('\n')
+            datainfo.write('0.0000000 {} xlo xhi\n'.format(args.rmcLength * args.cooScale))
+            datainfo.write('0.0000000 {} ylo yhi\n'.format(args.rmcLength * args.cooScale))
+            datainfo.write('0.0000000 {} zlo zhi\n'.format(args.rmcLength * args.cooScale))
+            datainfo.write('\n')
+            datainfo.write('Masses\n')
+            datainfo.write('\n')
+            datainfo.write('1 1.0\n')
+            datainfo.write('2 1.0\n')
+            datainfo.write('3 1.0\n')
+            datainfo.write('4 1.0\n')
+            datainfo.write('5 1.0\n')
+            datainfo.write('\n')
+            datainfo.write('Atoms\n')
+            datainfo.write('\n')
+            for i in range(totalAtoms):
+                datainfo.write(
+                    '{:8d} {:8d} {:8d} {:10.6f} {:8.3f} {:8.3f} {:8.3f}\n'.format(i + 1, i + 1, funcinfo[i], 0.0,
+                                                                                  coord[:, 0][i] * args.cooScale,
+                                                                                  coord[:, 1][i] * args.cooScale,
+                                                                                  coord[:, 2][i] * args.cooScale))
+            datainfo.write('\n')
+            datainfo.write('Bonds\n')
+            datainfo.write('\n')
+            for i in range(0, len(bondinfo[0])):
+                datainfo.write(
+                    '{:8d} {:8d} {:8d} {:8d}\n'.format(i + 1, bondinfo[0][i], bondinfo[1][i][0], bondinfo[1][i][1]))
+            datainfo.write('\n')
+            datainfo.write('Angles\n')
+            datainfo.write('\n')
+            for i in range(0, len(angleinfo[0])):
+                datainfo.write('{:8d} {:8d} {:8d} {:8d} {:8d}\n'.format(i + 1, angleinfo[0][i], angleinfo[1][i][0],
+                                                                        angleinfo[1][i][1], angleinfo[1][i][2]))
+            datainfo.write('\n')
+        datainfo.close()
+        print(len(bondinfo[0]), len(angleinfo[0]))
+
 
     # Parsers section
     def _read_header(self, input_line):
