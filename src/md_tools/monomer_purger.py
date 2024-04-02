@@ -38,4 +38,16 @@ def process(lmp: str, out: str):
     atom_mapping = clean_atoms(lammps_reader.atoms, monomers)
 
     # Remove atoms from lammps_reader
-    lammps_reader.atoms = [atom_mapping[a] for a in lammps_reader.atoms if a not in monomers]
+    logger.info(f"Removing {len(monomers)} monomers from the lammps data")
+    lammps_reader.atoms = {atom_mapping[a]: v for a, v in lammps_reader.atoms.items() if a not in monomers}
+    lammps_reader.topology['bonds'] = {
+        b: [(atom_mapping[b1], atom_mapping[b2]) for b1, b2 in blist] for b, blist in lammps_reader.topology['bonds'].items()}
+    lammps_reader.topology['angles'] = {
+        b: [(atom_mapping[b1], atom_mapping[b2], atom_mapping[b3]) for b1, b2, b3 in blist] for b, blist in lammps_reader.topology['angles'].items()}
+    lammps_reader.topology['dihedrals'] = {
+        b: [(atom_mapping[b1], atom_mapping[b2], atom_mapping[b3], atom_mapping[b4]) for b1, b2, b3, b4 in blist] for b, blist in lammps_reader.topology['dihedrals'].items()}
+    lammps_reader.topology['impropers'] = {
+        b: [(atom_mapping[b1], atom_mapping[b2], atom_mapping[b3], atom_mapping[b4]) for b1, b2, b3, b4 in blist] for b, blist in lammps_reader.topology['impropers'].items()}
+
+    logger.info(f"Writing output to {out}")
+    lammps_reader.write(out)

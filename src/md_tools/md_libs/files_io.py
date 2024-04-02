@@ -19,18 +19,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import collections
 import copy
-import datetime
 import logging
-import numpy
 import os
 import re
 import sys
 import warnings
 
+import numpy
+import numpy as np
+
 try:
     import networkx as nx
 except ImportError:
     warnings.warn("networkx not found, .get_graph() method will not be available")
+
+from . import lammps_utils
 
 __doc__ = "Set of I/O classes and functions."""
 
@@ -99,7 +102,7 @@ def prepare_path(file_path):
             max_copy_id = 0
         new_file_name = '_%s.%d_' % (file_name, max_copy_id + 1)
         new_file_path = os.path.join(dir_name, new_file_name)
-        print('\nFound: %s, backup on: %s\n' % (file_path, new_file_path))
+        logger.info('\nFound: %s, backup on: %s\n' % (file_path, new_file_path))
         os.rename(file_path, new_file_path)
 
     return file_path
@@ -122,7 +125,7 @@ def sort_h5md_array(input_array, ids, max_T=None):
             x[1] for x in sorted(
                 [(p_id, col_id) for col_id, p_id in enumerate(ids[t])],
                 key=lambda y: (True, y[0]) if y[0] == -1 else (False, y[0]))
-            ]
+        ]
         output_array[t] = input_array[t][idd]
     return output_array
 
@@ -136,7 +139,7 @@ def prepare_h5md(h5file, group_name, begin, end, step=None, no_image=False, sort
     # Checks if there is an ids data set. That implies sorting.
     ids = None
     if 'id' in list(h5file['/particles/{}/'.format(group_name)].keys()):
-        print('Found id/ group, columns will be sorted.')
+        logger.info('Found id/ group, columns will be sorted.')
         ids = h5file['/particles/{}/id/value'.format(group_name)][begin:end:step]
 
     # Prepares box. Assumes that box is static even if there are time-dependent values.
@@ -154,7 +157,7 @@ def prepare_h5md(h5file, group_name, begin, end, step=None, no_image=False, sort
         trj = sort_h5md_array(trj, ids)
 
     if 'image' in list(h5file['/particles/{}'.format(group_name)].keys()) and not no_image:
-        print('Found image group, computing absolute trajectory...')
+        logger.info('Found image group, computing absolute trajectory...')
         image = numpy.array(
             h5file['/particles/{}/image/value'.format(group_name)][begin:end:step]
         )
@@ -175,6 +178,7 @@ def prepare_h5md(h5file, group_name, begin, end, step=None, no_image=False, sort
 
 class CoordinateFile(object):
     """Coordinate file object."""
+
     def __init__(self, file_name):
         self.file_name = file_name
         self.title = None
@@ -215,7 +219,7 @@ class TopologyFile(object):
             'dihedrals': {},
             'improper_dihedrals': {},
             'pairs': {}
-            }
+        }
         self.parsers = {}
         self.writers = {}
 
@@ -304,7 +308,7 @@ class GROFile(CoordinateFile):
         # Reads the box size, the last line.
         self.box = numpy.array(
             list(map(float, [_f for _f in self.content[number_of_atoms + 2].split(' ') if _f]))
-            ) * self.scale_factor
+        ) * self.scale_factor
 
     def remove_atom(self, atom_id, renumber=True):
         """Remove atom and renumber the file."""
@@ -332,7 +336,6 @@ class GROFile(CoordinateFile):
             new_atoms[new_at_id] = self.atoms[at_id]._replace(atom_id=new_at_id)
             new_at_id += 1
         self.atoms = new_atoms
-
 
     @staticmethod
     def copy(input_gro, particle_ids=None, renumber=False):
@@ -392,7 +395,7 @@ class GROFile(CoordinateFile):
                     at.position[0],
                     at.position[1],
                     at.position[2]
-                    ))
+                ))
 
             output.append('%f %f %f\n' % tuple(self.box))
             if append:
@@ -448,7 +451,7 @@ class PDBFile(CoordinateFile):
                 # Box size
                 self.box = numpy.array(
                     list(map(float, [_f for _f in line.split(' ') if _f][1:4]))
-                    ) * self.scale_factor
+                ) * self.scale_factor
             elif line.startswith('ATOM') or line.startswith('HETATM'):
                 atom_id = int(line[6:11].strip())
                 atom_name = line[12:16].strip()
@@ -464,7 +467,7 @@ class PDBFile(CoordinateFile):
                         chain_name=chain_name,
                         chain_idx=chain_idx,
                         position=numpy.array([pos_x, pos_y, pos_z])
-                        ))
+                    ))
                 self.fragments[chain_name][atom_name] = self.atoms[atom_id]
 
         if len([x for x in self.box if x == self.box[0]]) != 3:
@@ -488,7 +491,7 @@ class PDBFile(CoordinateFile):
                 90,
                 'P 1',
                 1
-                ))
+            ))
 
             # Puts the number of atoms
             output.append('%d' % len(self.atoms))
@@ -506,7 +509,7 @@ class PDBFile(CoordinateFile):
                     at.position[1] / self.scale_factor,
                     at.position[2] / self.scale_factor,
                     at.name
-                    ))
+                ))
 
             output.append('TER')
             output.append('ENDMDL')
@@ -537,7 +540,7 @@ class XYZFile(CoordinateFile):
 
         at_id = 1  # XYZ does not have notion about atom id
         chain_name = 'DUMMY'
-        for line in self.content[2:number_of_atoms+2]:
+        for line in self.content[2:number_of_atoms + 2]:
             t = line.split()
             at_name = t[0]
             pos_x = float(t[1]) * self.scale_factor
@@ -584,8 +587,10 @@ class XYZFile(CoordinateFile):
             output_file.writelines('\n'.join(output))
         self.atoms_updated = False
 
+
 class GROMACSTopologyFile(object):
     """Very basic representation of topology file."""
+
     def __init__(self, file_name):
         self.file_name = file_name
         self.title = None
@@ -664,7 +669,7 @@ class GROMACSTopologyFile(object):
                 [self.new_data.get('cross_dihedrals'), self.cross_dihedrals]),
             'cross_pairs': lambda: self._write_default(
                 [self.new_data.get('cross_pairs'), self.cross_pairs])
-            }
+        }
         self.current_charges = {}
         self.atomtypes = {}
         self.nonbond_params = {}
@@ -773,7 +778,6 @@ class GROMACSTopologyFile(object):
         for k in self.new_data:
             self.new_data[k] = {p: v for p, v in list(self.new_data[k].items()) if atom_id not in p}
 
-
     def renumber(self):
         """Renumber topology"""
         # Clean bonded structures.
@@ -812,9 +816,9 @@ class GROMACSTopologyFile(object):
 
     def _replicate_lists(self, n_mols, n_atoms, input_list, shift=0):
         return {
-            tuple([shift+x+(mol*n_atoms) for x in l]): v
+            tuple([shift + x + (mol * n_atoms) for x in l]): v
             for mol in range(n_mols) for l, v in list(input_list.items())
-            }
+        }
 
     def replicate(self):
         """Replicate molecules"""
@@ -822,7 +826,7 @@ class GROMACSTopologyFile(object):
         atoms = copy.copy(self.atoms)
         for mol_id in range(1, nmols):
             for at_id in atoms:
-                new_at_id = mol_id*len(atoms) + at_id
+                new_at_id = mol_id * len(atoms) + at_id
                 self.atoms[new_at_id] = copy.copy(atoms[at_id])
                 self.atoms[new_at_id].atom_id = new_at_id
                 self.atoms[new_at_id].chain_idx = mol_id + 1
@@ -861,9 +865,9 @@ class GROMACSTopologyFile(object):
                     section_name = 'improper_dihedrals'
                 current_parser = self.parsers.get(section_name)
                 if current_parser is not None:
-                    print(('{}: Reading section {}'.format(self.file_name, section_name)))
+                    logger.info(('{}: Reading section {}'.format(self.file_name, section_name)))
                 else:
-                    print(('Parser for section {} not defined'.format(section_name)))
+                    logger.info(('Parser for section {} not defined'.format(section_name)))
                 visited_sections.add(previous_section)
             else:
                 if current_parser is not None and section_name not in visited_sections:
@@ -935,7 +939,7 @@ class GROMACSTopologyFile(object):
                 if previous_section == 'dihedrals' and current_section == 'dihedrals':
                     current_section = 'improper_dihedrals'
                 section_writer = self.writers.get(current_section)
-                print(('{}: Writing section {}'.format(filename, current_section)))
+                logger.info(('{}: Writing section {}'.format(filename, current_section)))
                 skip_lines = False
             elif tmp_line.startswith(';') or tmp_line.startswith('#'):
                 new_data.append(line)
@@ -992,7 +996,7 @@ class GROMACSTopologyFile(object):
         sigma, epsilon = ts
 
         if at_type not in ['A', 'S', 'D', 'V']:
-            print(('Wrong particle type {} in atomtypes line: {}'.format(at_type, raw_data)))
+            logger.info(('Wrong particle type {} in atomtypes line: {}'.format(at_type, raw_data)))
 
         self.atomtypes[name] = {
             'name': name,
@@ -1161,7 +1165,7 @@ class GROMACSTopologyFile(object):
             'nbfunc': int(raw_data[0]),
             'combinationrule': int(raw_data[1]),
             'comb-rule': int(raw_data[1])
-            }
+        }
         if len(raw_data) > 2:
             self.defaults['gen-pairs'] = raw_data[2] == 'yes'
             self.defaults['fudgeLJ'] = float(raw_data[3])
@@ -1383,11 +1387,11 @@ class LammpsReader(object):
                         self.timestep = int(timestep.groups()[0])
                 section_line = line.split('#')[0].strip()
                 if section_line in self.data_parsers:
-                    if self.verbose: print(('{}: Reading section {}'.format(file_name, line)))
+                    if self.verbose: logger.info(('{}: Reading section {}'.format(file_name, line)))
                     self.previous_section = self.current_section
                     self.current_section = section_line
                 elif 'Coeff' in section_line:
-                    if self.verbose: print(('{}: Reading coefficient section {}'.format(file_name, line)))
+                    if self.verbose: logger.info(('{}: Reading coefficient section {}'.format(file_name, line)))
                     self.previous_section = self.current_section
                     self.current_section = 'coeffs'
                     self._section_line = section_line
@@ -1435,7 +1439,6 @@ class LammpsReader(object):
                             current_item.replace('ATOMS', '').split(), line.split())))
                         self.atoms[atom_data['id']] = atom_data
 
-
     def read_input(self, file_name):
         """Reads LAMMPS input script. Only take cares on *_style and pair_coeff
 
@@ -1449,7 +1452,7 @@ class LammpsReader(object):
                     continue
                 if '_style' in line:
                     sp_line = line.split()
-                    if self.verbose: print(('Reads  {}'.format(sp_line[0])))
+                    if self.verbose: logger.info(('Reads  {}'.format(sp_line[0])))
                     self.force_field[sp_line[0]] = sp_line[1:]
                 elif 'bond_coeff' in line or 'angle_coeff' in line or 'dihedral_coeff' in line:
                     sp_line = line.split()
@@ -1471,7 +1474,7 @@ class LammpsReader(object):
                 elif 'read_data' in line:
                     sp_line = line.split()
                     data_file = sp_line[1].strip()
-                    if self.verbose: print(('Reads data file: {}'.format(data_file)))
+                    if self.verbose: logger.info(('Reads data file: {}'.format(data_file)))
                     self.read_data(data_file)
 
     def update_atoms(self, file_name):
@@ -1490,7 +1493,7 @@ class LammpsReader(object):
                     self.previous_section = self.current_section
                     self.current_section = section_line
                     if section_line == 'Atoms':
-                        if self.verbose: print(('{}: Found "Atoms" section, updating atoms'.format(file_name)))
+                        if self.verbose: logger.info(('{}: Found "Atoms" section, updating atoms'.format(file_name)))
                 elif self.current_section is not None and self.current_section == 'Atoms':
                     self._read_atom(line, update=True)
                 else:
@@ -1566,64 +1569,66 @@ class LammpsReader(object):
 
         return output_graph
 
-    def write(self, g: nx.Graph, out_path: str) -> object:
-        logger.info("Processing ATOM information ...")
-        funcinfo = [g.degree(n) + 1 for n in g.nodes()]
-        ogger.info("Processing BOND information ...")
-        bondinfo = genBondInfo(G, args.numAtoms, args.monFrac)
-        print("Processing ANGLE information ...")
-        angleinfo = genAngleInfo(G, args.numAtoms, args.monFrac)
-        totalAtoms = args.numAtoms
-        groupA = int(args.numAtoms * args.monFrac)
-        coord = np.loadtxt(args.xyzFile)
-        print("Writing LAMMPS data file ...")
-        with open(args.samPath + '/' + '{}.lmp'.format(args.fileName), 'w') as datainfo:
-            datainfo.write('Polymer Network System\n')
-            datainfo.write('\n')
-            datainfo.write('{} atoms\n'.format(totalAtoms))
-            datainfo.write('{} bonds\n'.format(len(bondinfo[0])))
-            datainfo.write('{} angles\n'.format(len(angleinfo[0])))
-            datainfo.write('\n')
-            datainfo.write('5 atom types\n')
-            datainfo.write('3 bond types\n')
-            datainfo.write('4 angle types\n')
-            datainfo.write('\n')
-            datainfo.write('0.0000000 {} xlo xhi\n'.format(args.rmcLength * args.cooScale))
-            datainfo.write('0.0000000 {} ylo yhi\n'.format(args.rmcLength * args.cooScale))
-            datainfo.write('0.0000000 {} zlo zhi\n'.format(args.rmcLength * args.cooScale))
-            datainfo.write('\n')
-            datainfo.write('Masses\n')
-            datainfo.write('\n')
-            datainfo.write('1 1.0\n')
-            datainfo.write('2 1.0\n')
-            datainfo.write('3 1.0\n')
-            datainfo.write('4 1.0\n')
-            datainfo.write('5 1.0\n')
-            datainfo.write('\n')
-            datainfo.write('Atoms\n')
-            datainfo.write('\n')
-            for i in range(totalAtoms):
-                datainfo.write(
-                    '{:8d} {:8d} {:8d} {:10.6f} {:8.3f} {:8.3f} {:8.3f}\n'.format(i + 1, i + 1, funcinfo[i], 0.0,
-                                                                                  coord[:, 0][i] * args.cooScale,
-                                                                                  coord[:, 1][i] * args.cooScale,
-                                                                                  coord[:, 2][i] * args.cooScale))
-            datainfo.write('\n')
-            datainfo.write('Bonds\n')
-            datainfo.write('\n')
-            for i in range(0, len(bondinfo[0])):
-                datainfo.write(
-                    '{:8d} {:8d} {:8d} {:8d}\n'.format(i + 1, bondinfo[0][i], bondinfo[1][i][0], bondinfo[1][i][1]))
-            datainfo.write('\n')
-            datainfo.write('Angles\n')
-            datainfo.write('\n')
-            for i in range(0, len(angleinfo[0])):
-                datainfo.write('{:8d} {:8d} {:8d} {:8d} {:8d}\n'.format(i + 1, angleinfo[0][i], angleinfo[1][i][0],
-                                                                        angleinfo[1][i][1], angleinfo[1][i][2]))
-            datainfo.write('\n')
-        datainfo.close()
-        print(len(bondinfo[0]), len(angleinfo[0]))
+    def write(self, output: str):
+        g = self.get_simple_graph()
+        content = ['Polymer Network System', '']
 
+        num_bonds = len([p for v in self.topology['bonds'].values() for p in v])
+        num_angles = len([p for v in self.topology['angles'].values() for p in v])
+        num_atom_types = len(set([a['atom_type'] for a in self.atoms.values()]))
+        num_bond_types = len(self.topology['bonds'])
+        num_angle_types = len(self.topology['angles'])
+
+        content.append(f"{len(g.nodes)} atoms")
+        content.append(f"{num_bonds} bonds")
+        content.append(f"{num_angles} angles")
+        content.append('')
+        content.append(f'{num_atom_types} atom types')
+        content.append(f'{num_bond_types} bond types')
+        content.append(f'{num_angle_types} angle types')
+        content.append('')
+        content.append('0.0000000 {} xlo xhi\n'.format(self.box['x'] / self.distance_scale_factor))
+        content.append('0.0000000 {} ylo yhi\n'.format(self.box['y'] / self.distance_scale_factor))
+        content.append('0.0000000 {} zlo zhi\n'.format(self.box['z'] / self.distance_scale_factor))
+        content.append('')
+        content.append('Masses')
+        content.append('')
+        for at_type, mass in self._mass_type.items():
+            content.append(f'{at_type} {mass}')
+        content.append('')
+        content.append('Atoms')
+        content.append('')
+        atom_ids = sorted(self.atoms.keys())
+        for at_id in atom_ids:
+            at_data = self.atoms[at_id]
+            content.append('{:8d} {:8d} {:8d} {:10.6f} {:8.3f} {:8.3f} {:8.3f}\n'.format(
+                at_id,
+                at_id,
+                at_data['atom_type'],
+                0.0,
+                at_data['position'][0] / self.distance_scale_factor,
+                at_data['position'][1] / self.distance_scale_factor,
+                at_data['position'][2] / self.distance_scale_factor))
+        content.append('')
+        content.append('Bonds')
+        content.append('')
+        bond_idx = 1
+        for bond_id, bond_list in self.topology['bonds'].items():
+            for b1, b2 in bond_list:
+                content.append('{:8d} {:8d} {:8d} {:8d}\n'.format(bond_idx, b1, b2, bond_id))
+                bond_idx += 1
+        content.append('')
+        content.append('Angles')
+        content.append('')
+        angle_idx = 1
+        for angle_id, angle_list in self.topology['angles'].items():
+            for a1, a2, a3 in angle_list:
+                content.append('{:8d} {:8d} {:8d} {:8d} {:8d}\n'.format(angle_idx, a1, a2, a3, angle_id))
+                angle_idx += 1
+        content.append('')
+
+        with open(output, 'w') as f:
+            f.writelines(content)
 
     # Parsers section
     def _read_header(self, input_line):
@@ -1639,7 +1644,7 @@ class LammpsReader(object):
             self._box_translate[tag] = lo
             self.box[tag] = hi - lo
         elif ('atoms' in sp_line or 'bonds' in sp_line or 'angles' in sp_line
-                or 'dihedrals' in sp_line or 'impropers' in sp_line):
+              or 'dihedrals' in sp_line or 'impropers' in sp_line):
             self._item_counters[sp_line[1]] = int(sp_line[0])
 
     def _read_coeff(self, input_line):
@@ -1675,7 +1680,7 @@ class LammpsReader(object):
         if at_type > self._type_counters['atom']:
             raise RuntimeError(('Atom type {} not found.'.format(at_type)))
 
-        #if at_type in self.atom_charges:
+        # if at_type in self.atom_charges:
         #    if q != self.atom_charges[at_type]:
         #        raise RuntimeError('Charge of atom type {} is different, {} != {}'.format(
         #            at_type, q, self.atom_charges[at_type]
@@ -1758,7 +1763,7 @@ class LammpsReader(object):
             raise RuntimeError('Number of impropers is wrong.')
 
         if (at_1 not in self.atoms or at_2 not in self.atoms or at_3 not in self.atoms or
-                    at_4 not in self.atoms):
+                at_4 not in self.atoms):
             raise RuntimeError('{}, {}, {} or {} not found in list of atoms.'.format(
                 at_1, at_2, at_3, at_4))
         self.topology['impropers'][dihedral_type].append((at_1, at_2, at_3, at_4))
@@ -1767,7 +1772,6 @@ class LammpsReader(object):
         sp_line = input_line.split()
         at_id, mass = sp_line
         self._mass_type[int(at_id)] = float(mass)
-
 
 
 def read_coordinates(file_name):
