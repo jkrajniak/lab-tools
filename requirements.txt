@@ -4,3 +4,5 @@ networkx>=3.0
 click>=8.0.0
 build
 h5py>=2.6
+pre-commit
+ruff
