@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lab-tools"
+version = "2024.0.1"
+dynamic = ["dependencies"]
+requires-python = ">=3.8"
+authors = [
+  {name = "Jakub Krajniak", email = "jkrajniak@gmail.com"},
+  {name = "Zidan Zhang", email = "zidan.zhang@utexas.edu"},
+]
+description = "Basic lab-tools"
+readme = "README.md"
+license = {file = "LICENSE.txt"}
+classifiers = [
+  "Programming Language :: Python"
+]
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = false
+
+[project.scripts]
+md_tools = "md_tools:cli.main"
+h5md_bond_list = "h5mdtools:h5md_bond_list.main"
+h5md_info = "h5mdtools:h5md_info.main"
+h5md_merge = "h5mdtools:h5md_merge.main"
+h5md_shrink = "h5mdtools:h5md_shrink.main"
+h5md_sort = "h5mdtools:h5md_sort.main"
+h5md_plot_data = "h5mdtools:h5md_plot_data.main"

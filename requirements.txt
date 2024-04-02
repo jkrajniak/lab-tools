@@ -1,0 +1,6 @@
+numpy>=1.24
+pandas>=2.0
+networkx>=3.0
+click>=8.0.0
+build
+h5py>=2.6
