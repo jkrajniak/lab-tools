@@ -1,0 +1,41 @@
+name: continuous-deployment
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'src/**'
+      - 'pyproject.toml'
+
+  workflow_dispatch:
+
+
+jobs:
+  build-package:
+    name: 'Build and push package'
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: 'Set up Python'
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.11'
+      - name: Install requirements
+        run: |
+          pip install -r requirements_dev.txt
+      - name: Configure Git
+        run: |
+          git config --global user.email "git@mobilephysics.com"
+          git config --global user.name "Git Workflow cd.yaml"
+      - name: 'Bump version'
+        run: |
+          bump-my-version bump minor --verbose --tag
+      - name: 'Build package'
+        run: |
+          python -m build --wheel
+      - name: 'Push tags'
+        run: |
+          git push --tags

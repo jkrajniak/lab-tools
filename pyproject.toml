@@ -4,8 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "md-lab-tools"
-version = "2024.0.1"
-dynamic = ["dependencies"]
+dynamic = ["dependencies", "version"]
 requires-python = ">=3.8"
 authors = [
   {name = "Jakub Krajniak", email = "jkrajniak@gmail.com"},
@@ -20,6 +19,7 @@ classifiers = [
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
+version = {attr = "md_tools._version.VERSION"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
