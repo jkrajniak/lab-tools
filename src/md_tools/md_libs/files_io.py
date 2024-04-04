@@ -1325,6 +1325,22 @@ class LammpsReader(object):
                     self.previous_section = self.current_section
                     self.current_section = None
 
+    def print_info(self):
+        """Prints information about the data."""
+        logger.info("Timestep: %d", self.timestep)
+        logger.info("Box: %s", self.box)
+        logger.info("Atoms: %d", len(self.atoms))
+        logger.info("Num atom types: %d", len(self._type_counters))
+        logger.info("Topology:")
+        logger.info(f"Num bond types: {len(self.topology['bonds'])}")
+        logger.info(f"Num bonds: {sum([len(x) for x in self.topology['bonds'].values()])}")
+        logger.info(f"Num angle types: {len(self.topology['angles'])}")
+        logger.info(f"Num angles: {sum([len(x) for x in self.topology['angles'].values()])}")
+        logger.info(f"Num dihedral types: {len(self.topology['dihedrals'])}")
+        logger.info(f"Num dihedrals: {sum([len(x) for x in self.topology['dihedrals'].values()])}")
+        logger.info(f"Num improper types: {len(self.topology['impropers'])}")
+        logger.info(f"Num impropers: {sum([len(x) for x in self.topology['impropers'].values()])}")
+
     def read_dump(self, file_name, timestep, scale_factor=1.0, update=False):
         """Reads data file written with write_dump command.
 
@@ -1490,7 +1506,7 @@ class LammpsReader(object):
 
         num_bonds = len([p for v in list(self.topology["bonds"].values()) for p in v])
         num_angles = len([p for v in list(self.topology["angles"].values()) for p in v])
-        num_atom_types = len(set([a["atom_type"] for a in list(self.atoms.values())]))
+        num_atom_types = max(set([a["atom_type"] for a in list(self.atoms.values())]))
         num_bond_types = len(self.topology["bonds"])
         num_angle_types = len(self.topology["angles"])
 
@@ -1502,9 +1518,9 @@ class LammpsReader(object):
         content.append(f"{num_bond_types} bond types")
         content.append(f"{num_angle_types} angle types")
         content.append("")
-        content.append("0.0000000 {} xlo xhi\n".format(self.box["x"] / self.distance_scale_factor))
-        content.append("0.0000000 {} ylo yhi\n".format(self.box["y"] / self.distance_scale_factor))
-        content.append("0.0000000 {} zlo zhi\n".format(self.box["z"] / self.distance_scale_factor))
+        content.append("0.0000000 {} xlo xhi".format(self.box["x"] / self.distance_scale_factor))
+        content.append("0.0000000 {} ylo yhi".format(self.box["y"] / self.distance_scale_factor))
+        content.append("0.0000000 {} zlo zhi".format(self.box["z"] / self.distance_scale_factor))
         content.append("")
         content.append("Masses")
         content.append("")
@@ -1517,7 +1533,7 @@ class LammpsReader(object):
         for at_id in atom_ids:
             at_data = self.atoms[at_id]
             content.append(
-                "{:8d} {:8d} {:8d} {:10.6f} {:8.3f} {:8.3f} {:8.3f}\n".format(
+                "{:8d} {:8d} {:8d} {:10.6f} {:8.3f} {:8.3f} {:8.3f}".format(
                     at_id,
                     at_id,
                     at_data["atom_type"],
@@ -1533,7 +1549,7 @@ class LammpsReader(object):
         bond_idx = 1
         for bond_id, bond_list in list(self.topology["bonds"].items()):
             for b1, b2 in bond_list:
-                content.append("{:8d} {:8d} {:8d} {:8d}\n".format(bond_idx, b1, b2, bond_id))
+                content.append("{:8d} {:8d} {:8d} {:8d}".format(bond_idx, bond_id, b1, b2))
                 bond_idx += 1
         content.append("")
         content.append("Angles")
@@ -1541,7 +1557,7 @@ class LammpsReader(object):
         angle_idx = 1
         for angle_id, angle_list in list(self.topology["angles"].items()):
             for a1, a2, a3 in angle_list:
-                content.append("{:8d} {:8d} {:8d} {:8d} {:8d}\n".format(angle_idx, a1, a2, a3, angle_id))
+                content.append("{:8d} {:8d} {:8d} {:8d} {:8d}".format(angle_idx, angle_id, a1, a2, a3))
                 angle_idx += 1
         content.append("")
 

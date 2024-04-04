@@ -21,6 +21,7 @@ def clean_atoms(atoms: list, monomers: list) -> dict:
 def process(lmp: str, out: str):
     lammps_reader = files_io.LammpsReader()
     lammps_reader.read_data(lmp)
+    lammps_reader.print_info()
     logger.info(f"Read lammps data from {lmp}")
     logger.info(f"Number of atoms: {len(lammps_reader.atoms)}")
 
@@ -56,6 +57,9 @@ def process(lmp: str, out: str):
         b: [(atom_mapping[b1], atom_mapping[b2], atom_mapping[b3], atom_mapping[b4]) for b1, b2, b3, b4 in blist]
         for b, blist in list(lammps_reader.topology["impropers"].items())
     }
+
+    logger.info("After purger")
+    lammps_reader.print_info()
 
     logger.info(f"Writing output to {out}")
     lammps_reader.write(out)
