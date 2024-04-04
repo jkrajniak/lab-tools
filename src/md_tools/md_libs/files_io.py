@@ -1546,7 +1546,7 @@ class LammpsReader(object):
         content.append("")
 
         with open(output, "w") as f:
-            f.writelines(content)
+            f.write("\n".join(content))
 
     # Parsers section
     def _read_header(self, input_line):

@@ -16,7 +16,7 @@ def main(debug: bool):
 @main.command(help="Purge monomers from LAMMPS network")
 @click.option("-l", "--lmp", help="Input lammps configuration", required=True)
 @click.option("-o", "--out", help="Output lammps configuration", required=True)
-def purge(lmp: str, out: str, frac: float):
+def purge(lmp: str, out: str):
     monomer_purger.process(lmp, out)
 
 
