@@ -6,3 +6,4 @@ build
 h5py>=2.6
 pre-commit
 ruff~=0.3.5
+pytest
