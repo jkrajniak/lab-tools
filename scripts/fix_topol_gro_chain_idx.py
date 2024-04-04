@@ -23,11 +23,11 @@ from md_libs import files_io
 
 
 def _args():
-    parser = argparse.ArgumentParser((
-        'This tool tries to make the molecule index'
-        ' continuous in the topology and in the coordinate files'))
-    parser.add_argument('in_file', help='Input topology to fix')
-    parser.add_argument('out_file', help='Input coordinate file')
+    parser = argparse.ArgumentParser(
+        ("This tool tries to make the molecule index" " continuous in the topology and in the coordinate files")
+    )
+    parser.add_argument("in_file", help="Input topology to fix")
+    parser.add_argument("out_file", help="Input coordinate file")
 
     return parser.parse_args()
 
@@ -36,15 +36,15 @@ def main():
     args = _args()
     in_file = None
     topol = False
-    if args.in_file.endswith('top'):
+    if args.in_file.endswith("top"):
         in_file = files_io.GROMACSTopologyFile(args.in_file)
         in_file.read()
         topol = True
-    elif args.in_file.endswith('gro'):
+    elif args.in_file.endswith("gro"):
         in_file = files_io.GROFile(args.in_file)
         in_file.read()
     else:
-        raise RuntimeError('Unknown input file')
+        raise RuntimeError("Unknown input file")
 
     last_chidx = -1
     ch_idx = 0
@@ -59,11 +59,11 @@ def main():
         else:
             at_data = at_data._replace(chain_idx=ch_idx, atom_id=new_at_id)
             atoms[new_at_id] = at_data
-    print(('Saving updated file to {}'.format(args.out_file)))
+    print(("Saving updated file to {}".format(args.out_file)))
     if not topol:
         in_file.atoms = atoms
     in_file.write(args.out_file, force=True)
 
-if __name__ == '__main__':
-    main()
 
+if __name__ == "__main__":
+    main()

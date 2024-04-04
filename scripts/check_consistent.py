@@ -22,9 +22,9 @@ from md_libs import files_io
 
 
 def _args():
-    parser = argparse.ArgumentParser('Check if the atom labels are unique.')
-    parser.add_argument('--coord', help='Input .gro coordinate file')
-    parser.add_argument('--top', help='Input .top file')
+    parser = argparse.ArgumentParser("Check if the atom labels are unique.")
+    parser.add_argument("--coord", help="Input .gro coordinate file")
+    parser.add_argument("--top", help="Input .top file")
 
     return parser.parse_args()
 
@@ -36,8 +36,7 @@ def check_file(input_file, file_name):
     for sym, cn in atom_sym_count:
         if cn > 1:
             file_correct = False
-            print(('{}: Symbol {} found {} times'.format(file_name, sym, cn)))
-
+            print(("{}: Symbol {} found {} times".format(file_name, sym, cn)))
 
     return file_correct
 
@@ -49,16 +48,16 @@ def main():
         input_file = files_io.GROFile(args.coord)
         input_file.read()
         if check_file(input_file, args.coord):
-            print(('File {} is correct'.format(args.coord)))
+            print(("File {} is correct".format(args.coord)))
 
     if args.top:
         input_file = files_io.GROMACSTopologyFile(args.top)
         input_file.read()
         total_charge = sum([x.charge for x in list(input_file.atoms.values())])
         if check_file(input_file, args.top):
-            print(('File {} is correct'.format(args.top)))
-        print(('{}: total charge {}'.format(args.top, total_charge)))
+            print(("File {} is correct".format(args.top)))
+        print(("{}: total charge {}".format(args.top, total_charge)))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
-

@@ -26,38 +26,38 @@ from matplotlib import pyplot as plt
 
 def _args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('h5file')
-    parser.add_argument('--begin', default=0, type=int)
-    parser.add_argument('--dt', default=1, type=float)
-    parser.add_argument('--column_time', dest='col_time', default=0, type=int)
-    parser.add_argument('--line_style', default='-', type=str)
+    parser.add_argument("h5file")
+    parser.add_argument("--begin", default=0, type=int)
+    parser.add_argument("--dt", default=1, type=float)
+    parser.add_argument("--column_time", dest="col_time", default=0, type=int)
+    parser.add_argument("--line_style", default="-", type=str)
 
     return parser.parse_args()
 
 
 def _print_observables(observables):
     for i, key in enumerate(observables, 1):
-        print('{} - {}'.format(i, key))
+        print(("{} - {}".format(i, key)))
 
-    print('0 - Exit')
+    print("0 - Exit")
 
 
 def _show_h5_observable(names, h5file, time_begin, args, sum_values):
-    plt.xlabel('Step')
+    plt.xlabel("Step")
     if sum_values:
         tvalues = []
-        time = h5file['observables/{}/step'.format(names[0])][time_begin:]*args.dt
+        time = h5file["observables/{}/step".format(names[0])][time_begin:] * args.dt
         for name in names:
-            tvalues.append(h5file['observables/{}/value'.format(name)][time_begin:])
+            tvalues.append(h5file["observables/{}/value".format(name)][time_begin:])
         values = np.sum(tvalues, axis=1)
         plt.plot(time, values)
     else:
         for name in names:
-            values = h5file['observables/{}/value'.format(name)][time_begin:]
-            time = h5file['observables/{}/step'.format(name)][time_begin:]*dt
+            values = h5file["observables/{}/value".format(name)][time_begin:]
+            time = h5file["observables/{}/step".format(name)][time_begin:] * args.dt
             avg = np.average(values)
 
-            print('Avg of {}: {}'.format(name, avg))
+            print(("Avg of {}: {}".format(name, avg)))
 
             plt.plot(time, values, args.line_style, label=name)
 
@@ -66,9 +66,8 @@ def _show_h5_observable(names, h5file, time_begin, args, sum_values):
 
 
 def _show_csv_observable(names, data_file, time_begin, args, sum_values, observables):
-
-    plt.xlabel('Step')
-    steps = data_file[:, args.col_time][time_begin:]*args.dt
+    plt.xlabel("Step")
+    steps = data_file[:, args.col_time][time_begin:] * args.dt
 
     if sum_values:
         col_indexes = [observables.index(name) for name in names]
@@ -80,7 +79,7 @@ def _show_csv_observable(names, data_file, time_begin, args, sum_values, observa
             values = data_file[:, col_index][time_begin:]
             avg = np.average(values)
 
-            print('Avg of {}: {}'.format(name, avg))
+            print(("Avg of {}: {}".format(name, avg)))
 
             plt.plot(steps, values, args.line_style, label=name)
 
@@ -91,33 +90,34 @@ def _show_csv_observable(names, data_file, time_begin, args, sum_values, observa
 def main():
     args = _args()
 
-    if args.h5file.endswith('h5'):
-        data_file = h5py.File(args.h5file, 'r')
-        observables = data_file['observables'].keys()
+    if args.h5file.endswith("h5"):
+        data_file = h5py.File(args.h5file, "r")
+        observables = list(data_file["observables"].keys())
         _show_observable = _show_h5_observable
     else:
         data_file = np.loadtxt(args.h5file, skiprows=1)
-        observables = open(args.h5file, 'r').readline().split()
-        _show_observable = lambda w, x, y, z, s: _show_csv_observable(w, x, y, z, s, observables)
+        observables = open(args.h5file, "r").readline().split()
+        def _show_observable(w, x, y, z, s):
+            return _show_csv_observable(w, x, y, z, s, observables)
 
     _print_observables(observables)
-    ans = raw_input('Select: ')
-    while ans != '0':
+    ans = input("Select: ")
+    while ans != "0":
         sum_values = False
         try:
-            if '+' in ans:
-                ans_index = map(int, ans.split('+'))
+            if "+" in ans:
+                ans_index = list(map(int, ans.split("+")))
                 sum_values = True
             else:
-                ans_index = map(int, ans.split())
+                ans_index = list(map(int, ans.split()))
         except ValueError:
-            ans = raw_input('Select: ')
+            ans = input("Select: ")
             continue
-        print sum_values
-        obs_names = set([observables[x-1] for x in ans_index])
+        print(sum_values)
+        obs_names = set([observables[x - 1] for x in ans_index])
         _show_observable(obs_names, data_file, args.begin, args, sum_values)
-        ans = raw_input('Select: ')
+        ans = input("Select: ")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -23,12 +23,11 @@ from md_libs import files_io
 
 
 def _args():
-    parser = argparse.ArgumentParser('Synchronize the atom and chain names from topology to gro file')
-    parser.add_argument('--input_gro', required=True)
-    parser.add_argument('--input_top', required=True)
-    parser.add_argument('--output_gro', required=True)
+    parser = argparse.ArgumentParser("Synchronize the atom and chain names from topology to gro file")
+    parser.add_argument("--input_gro", required=True)
+    parser.add_argument("--input_top", required=True)
+    parser.add_argument("--output_gro", required=True)
     return parser.parse_args()
-
 
 
 def main():
@@ -39,12 +38,15 @@ def main():
     in_gro.read()
     in_top.read()
 
-    import IPython; IPython.embed()
+    import IPython
+
+    IPython.embed()
 
     for a_id, a in list(in_top.atoms.items()):
         in_gro.atoms[a_id] = in_gro.atoms[a_id]._replace(chain_name=a.chain_name, name=a.name)
 
     in_gro.write(args.output_gro, force=True)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

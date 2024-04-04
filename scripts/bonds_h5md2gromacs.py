@@ -24,12 +24,12 @@ from md_libs import files_io
 
 
 def _args():
-    parser = argparse.ArgumentParser('Copy bond list from H5MD list to GROMACS topology')
-    parser.add_argument('h5', help='Input H5MD file')
-    parser.add_argument('topol', help='Input GROMACS Topology file')
-    parser.add_argument('output', help='Output GROMACS topology file')
-    parser.add_argument('--time_frame', help='Time frame', default=-1)
-    parser.add_argument('--only_dynamic', action='store_true', default=False)
+    parser = argparse.ArgumentParser("Copy bond list from H5MD list to GROMACS topology")
+    parser.add_argument("h5", help="Input H5MD file")
+    parser.add_argument("topol", help="Input GROMACS Topology file")
+    parser.add_argument("output", help="Output GROMACS topology file")
+    parser.add_argument("--time_frame", help="Time frame", default=-1)
+    parser.add_argument("--only_dynamic", action="store_true", default=False)
 
     return parser.parse_args()
 
@@ -37,27 +37,32 @@ def _args():
 def main():
     args = _args()
 
-    h5 = h5py.File(args.h5, 'r')
+    h5 = h5py.File(args.h5, "r")
     topol = files_io.GROMACSTopologyFile(args.topol)
     topol.read()
 
-    if 'connectivity' in h5:
-        for name, ds in list(h5['/connectivity'].items()):
+    if "connectivity" in h5:
+        for name, ds in list(h5["/connectivity"].items()):
             if not args.only_dynamic and isinstance(ds, h5py.Dataset):
-                print(('Reading static {}'.format(name)))
+                print(("Reading static {}".format(name)))
                 for b in ds:
                     if -1 not in b:
-                        topol.new_data['bonds'][tuple(b)] = ['; h5md {}'.format(name)]
+                        topol.new_data["bonds"][tuple(b)] = ["; h5md {}".format(name)]
             elif isinstance(ds, h5py.Group):
-                print(('Reading {}, time frame: {} of {}'.format(
-                    name, 'last' if args.time_frame == -1 else args.time_frame, ds['step'].shape[0])))
-                data = ds['value'][args.time_frame]
+                print(
+                    (
+                        "Reading {}, time frame: {} of {}".format(
+                            name, "last" if args.time_frame == -1 else args.time_frame, ds["step"].shape[0]
+                        )
+                    )
+                )
+                data = ds["value"][args.time_frame]
                 for b in data:
                     if -1 not in b:
-                        topol.new_data['bonds'][tuple(b)] = ['; h5md {}'.format(name)]
+                        topol.new_data["bonds"][tuple(b)] = ["; h5md {}".format(name)]
 
         topol.write(args.output)
 
-if __name__ == '__main__':
-    main()
 
+if __name__ == "__main__":
+    main()

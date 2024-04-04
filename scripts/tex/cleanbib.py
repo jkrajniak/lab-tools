@@ -11,19 +11,19 @@ import argparse
 import bibtexparser
 from bibtexparser.bparser import BibTexParser
 from bibtexparser.bwriter import BibTexWriter
-from bibtexparser import customization
 import re
-import sys
+
 
 def _args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('input_bib', help='Input .bib file')
-    parser.add_argument('output_bib', help='Output .bib file')
+    parser.add_argument("input_bib", help="Input .bib file")
+    parser.add_argument("output_bib", help="Output .bib file")
 
-    parser.add_argument('--clean', action='store_true')
-    parser.add_argument('--title', action='store_true')
+    parser.add_argument("--clean", action="store_true")
+    parser.add_argument("--title", action="store_true")
 
     return parser.parse_args()
+
 
 def protect_uppercase(string):
     """
@@ -32,14 +32,15 @@ def protect_uppercase(string):
     :param string: string to convert
     :returns: string
     """
-    string = re.sub('([^{]|^)([A-Z])([^}]|$)', '\g<1>{\g<2>}\g<3>', string)
+    string = re.sub("([^{]|^)([A-Z])([^}]|$)", "\g<1>{\g<2>}\g<3>", string)
     return string
+
 
 def keep_uppercase(record):
     # And then, we fall back
     for val in record:
-        if val not in ('ID',):
-            if val in ['title', 'author', 'journal']:
+        if val not in ("ID",):
+            if val in ["title", "author", "journal"]:
                 record[val] = protect_uppercase(record[val])
     return record
 
@@ -58,16 +59,16 @@ def main():
 
         if args.clean:
             for entry in bib_database.entries:
-                for k in ('file', 'annote', 'abstract', 'url', 'file', 'link'):
-                    entry.pop(k,None)
+                for k in ("file", "annote", "abstract", "url", "file", "link"):
+                    entry.pop(k, None)
 
         for entry in bib_database.entries:
-            entry['title'] = '{{{}}}'.format(entry['title'])
+            entry["title"] = "{{{}}}".format(entry["title"])
 
         bibwriter = BibTexWriter()
-        with open(args.output_bib, 'w') as outbib:
+        with open(args.output_bib, "w") as outbib:
             bibtexparser.dump(bib_database, outbib, bibwriter)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

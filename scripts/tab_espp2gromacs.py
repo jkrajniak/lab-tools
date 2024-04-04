@@ -19,18 +19,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import argparse
 import datetime
-import math
 import numpy as np
 
 
 def _args():
-    parser = argparse.ArgumentParser(
-        description='Converts Espresso++ to GROMACS')
-    parser.add_argument('input_file')
-    parser.add_argument('output_file')
-    parser.add_argument('--table_type', choices=('pair', 'bond', 'angle', 'dihedral'),
-                        default='pair')
-    parser.add_argument('--length_scale', default=1.0, type=float)
+    parser = argparse.ArgumentParser(description="Converts Espresso++ to GROMACS")
+    parser.add_argument("input_file")
+    parser.add_argument("output_file")
+    parser.add_argument("--table_type", choices=("pair", "bond", "angle", "dihedral"), default="pair")
+    parser.add_argument("--length_scale", default=1.0, type=float)
 
     return parser.parse_args()
 
@@ -40,19 +37,20 @@ def _pair_convert(input_f, output_f, args):
     out_f = np.zeros((in_f.shape[0], 7))
     out_f[:, 0] = in_f[:, 0]
     out_f[:, 5] = in_f[:, 1]
-    np.savetxt(output_f, out_f, header='Converted ESPP to GROMACS, {} to {}, {}'.format(
-        input_f, output_f, datetime.datetime.now()))
+    np.savetxt(
+        output_f, out_f, header="Converted ESPP to GROMACS, {} to {}, {}".format(input_f, output_f, datetime.datetime.now())
+    )
 
 
 def main():
     args = _args()
 
     table_type2func = {
-        'pair': _pair_convert,
+        "pair": _pair_convert,
     }
 
     table_type2func[args.table_type](args.input_file, args.output_file, args)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

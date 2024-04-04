@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 def gen_bond_info(g: nx.Graph, natoms, ratio):
     group_a = int(natoms * ratio)
-    group_b = natoms - group_a
+    natoms - group_a
     bond_info = []
     ntype = []
     for edge in g.edges:
@@ -53,7 +53,7 @@ def gen_bonded_tuples(g, num, bond_pair):
 
 def gen_angle_info(g: nx.Graph, natoms: dict, ratio: float):
     group_a = int(natoms * ratio)
-    group_b = natoms - group_a
+    natoms - group_a
     angle_info = []
     ntype = []
     for edge in g.edges:
@@ -67,6 +67,7 @@ def gen_angle_info(g: nx.Graph, natoms: dict, ratio: float):
 @dataclasses.dataclass
 class LAMMPSWriterConfig:
     """The LAMMPS writer configuration object."""
+
     # The fraction of monomers in the system
     moo_frac: float
     # The scaling factor for the coordinates
@@ -95,52 +96,61 @@ def write(self, lmp_cfg: LAMMPSWriterConfig, xzyfile_path: str, g: nx.Graph, out
     print("Processing ANGLE information ...")
     angleinfo = gen_angle_info(g, natoms, lmp_cfg.mon_frac)
     totalAtoms = natoms
-    groupA = int(natoms * lmp_cfg.mon_frac)
+    int(natoms * lmp_cfg.mon_frac)
     coord = np.loadtxt(xzyfile_path)
     print("Writing LAMMPS data file ...")
-    with open(out_path, 'w') as datainfo:
-        datainfo.write('Polymer Network System\n')
-        datainfo.write('\n')
-        datainfo.write('{} atoms\n'.format(totalAtoms))
-        datainfo.write('{} bonds\n'.format(len(bondinfo[0])))
-        datainfo.write('{} angles\n'.format(len(angleinfo[0])))
-        datainfo.write('\n')
-        datainfo.write('5 atom types\n')
-        datainfo.write('3 bond types\n')
-        datainfo.write('4 angle types\n')
-        datainfo.write('\n')
-        datainfo.write('0.0000000 {} xlo xhi\n'.format(lmp_cfg.rmc_length * lmp_cfg.coo_scale))
-        datainfo.write('0.0000000 {} ylo yhi\n'.format(lmp_cfg.rmc_length * lmp_cfg.coo_scale))
-        datainfo.write('0.0000000 {} zlo zhi\n'.format(lmp_cfg.rmc_length * lmp_cfg.coo_scale))
-        datainfo.write('\n')
-        datainfo.write('Masses\n')
-        datainfo.write('\n')
-        datainfo.write('1 1.0\n')
-        datainfo.write('2 1.0\n')
-        datainfo.write('3 1.0\n')
-        datainfo.write('4 1.0\n')
-        datainfo.write('5 1.0\n')
-        datainfo.write('\n')
-        datainfo.write('Atoms\n')
-        datainfo.write('\n')
+    with open(out_path, "w") as datainfo:
+        datainfo.write("Polymer Network System\n")
+        datainfo.write("\n")
+        datainfo.write("{} atoms\n".format(totalAtoms))
+        datainfo.write("{} bonds\n".format(len(bondinfo[0])))
+        datainfo.write("{} angles\n".format(len(angleinfo[0])))
+        datainfo.write("\n")
+        datainfo.write("5 atom types\n")
+        datainfo.write("3 bond types\n")
+        datainfo.write("4 angle types\n")
+        datainfo.write("\n")
+        datainfo.write("0.0000000 {} xlo xhi\n".format(lmp_cfg.rmc_length * lmp_cfg.coo_scale))
+        datainfo.write("0.0000000 {} ylo yhi\n".format(lmp_cfg.rmc_length * lmp_cfg.coo_scale))
+        datainfo.write("0.0000000 {} zlo zhi\n".format(lmp_cfg.rmc_length * lmp_cfg.coo_scale))
+        datainfo.write("\n")
+        datainfo.write("Masses\n")
+        datainfo.write("\n")
+        datainfo.write("1 1.0\n")
+        datainfo.write("2 1.0\n")
+        datainfo.write("3 1.0\n")
+        datainfo.write("4 1.0\n")
+        datainfo.write("5 1.0\n")
+        datainfo.write("\n")
+        datainfo.write("Atoms\n")
+        datainfo.write("\n")
         for i in range(totalAtoms):
             datainfo.write(
-                '{:8d} {:8d} {:8d} {:10.6f} {:8.3f} {:8.3f} {:8.3f}\n'.format(i + 1, i + 1, funcinfo[i], 0.0,
-                                                                              coord[:, 0][i] * lmp_cfg.coo_scale,
-                                                                              coord[:, 1][i] * lmp_cfg.coo_scale,
-                                                                              coord[:, 2][i] * lmp_cfg.coo_scale))
-        datainfo.write('\n')
-        datainfo.write('Bonds\n')
-        datainfo.write('\n')
+                "{:8d} {:8d} {:8d} {:10.6f} {:8.3f} {:8.3f} {:8.3f}\n".format(
+                    i + 1,
+                    i + 1,
+                    funcinfo[i],
+                    0.0,
+                    coord[:, 0][i] * lmp_cfg.coo_scale,
+                    coord[:, 1][i] * lmp_cfg.coo_scale,
+                    coord[:, 2][i] * lmp_cfg.coo_scale,
+                )
+            )
+        datainfo.write("\n")
+        datainfo.write("Bonds\n")
+        datainfo.write("\n")
         for i in range(0, len(bondinfo[0])):
-            datainfo.write(
-                '{:8d} {:8d} {:8d} {:8d}\n'.format(i + 1, bondinfo[0][i], bondinfo[1][i][0], bondinfo[1][i][1]))
-        datainfo.write('\n')
-        datainfo.write('Angles\n')
-        datainfo.write('\n')
+            datainfo.write("{:8d} {:8d} {:8d} {:8d}\n".format(
+                i + 1, bondinfo[0][i], bondinfo[1][i][0], bondinfo[1][i][1]))
+        datainfo.write("\n")
+        datainfo.write("Angles\n")
+        datainfo.write("\n")
         for i in range(0, len(angleinfo[0])):
-            datainfo.write('{:8d} {:8d} {:8d} {:8d} {:8d}\n'.format(i + 1, angleinfo[0][i], angleinfo[1][i][0],
-                                                                    angleinfo[1][i][1], angleinfo[1][i][2]))
-        datainfo.write('\n')
+            datainfo.write(
+                "{:8d} {:8d} {:8d} {:8d} {:8d}\n".format(
+                    i + 1, angleinfo[0][i], angleinfo[1][i][0], angleinfo[1][i][1], angleinfo[1][i][2]
+                )
+            )
+        datainfo.write("\n")
     datainfo.close()
     print(len(bondinfo[0]), len(angleinfo[0]))

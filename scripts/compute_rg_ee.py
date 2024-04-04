@@ -25,13 +25,13 @@ import numpy as np
 from md_libs import files_io
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--trj', required=True)
-parser.add_argument('--top', required=True)
-parser.add_argument('--top_gromacs', required=True)
-parser.add_argument('--out_rg', required=True)
-parser.add_argument('--out_ee', required=True)
-parser.add_argument('--select_atoms', required=True)
-parser.add_argument('--number_of_chains', type=int, required=True)
+parser.add_argument("--trj", required=True)
+parser.add_argument("--top", required=True)
+parser.add_argument("--top_gromacs", required=True)
+parser.add_argument("--out_rg", required=True)
+parser.add_argument("--out_ee", required=True)
+parser.add_argument("--select_atoms", required=True)
+parser.add_argument("--number_of_chains", type=int, required=True)
 
 args = parser.parse_args()
 
@@ -42,17 +42,17 @@ top.read()
 pe10_traj = mdtraj.load(args.trj, top=args.top)
 end_end_atoms_id = pe10_traj.topology.select(args.select_atoms)
 
-# We have to calculate it for every molecule separetly 
+# We have to calculate it for every molecule separetly
 rg_values = []
 masses = np.array([top.atoms[x].mass for x in top.atoms])
 for t in pe10_traj.xyz:
-    rgs = rg._compute_rg_xyz(t.reshape(args.number_of_chains, t.shape[0]/args.number_of_chains, 3), masses)
+    rgs = rg._compute_rg_xyz(t.reshape(args.number_of_chains, t.shape[0] / args.number_of_chains, 3), masses)
     rg_values.append([np.average(rgs), np.std(rgs)])
 np.savetxt(args.out_rg, rg_values)
 
 ee_values = []
 for t in pe10_traj.xyz:
-    pairs = t[end_end_atoms_id.reshape(end_end_atoms_id.shape[0]/2, 2)]
+    pairs = t[end_end_atoms_id.reshape(end_end_atoms_id.shape[0] / 2, 2)]
     d = [(x - y) for x, y in pairs]
     d_abs = [np.sqrt(x.dot(x)) for x in d]
     ee_values.append(np.average(d_abs))

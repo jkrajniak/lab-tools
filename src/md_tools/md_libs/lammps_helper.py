@@ -36,27 +36,27 @@ def get_lammps(filename, return_frames=False):
 
     """
     frame_lines = []
-    with open(filename, 'r') as of:
+    with open(filename, "r") as of:
         lines = []
         in_section = False
         headers = []
         for l in of:
-            if in_section and l.startswith('Loop'):
+            if in_section and l.startswith("Loop"):
                 in_section = False
                 if return_frames:
                     frame_lines.append(lines)
                     lines = []
                 continue
-            if l.startswith('Time') or l.startswith('Step'):
+            if l.startswith("Time") or l.startswith("Step"):
                 in_section = True
                 headers.append(l.split())
                 continue
             if in_section:
                 lines.append(l)
         if return_frames:
-            return [StringIO.StringIO(''.join(l)) for l in frame_lines], headers
+            return [StringIO.StringIO("".join(l)) for l in frame_lines], headers
         else:
-            return StringIO.StringIO(''.join(lines)), headers[0]
+            return StringIO.StringIO("".join(lines)), headers[0]
 
 
 def block_average(input_data, max_tb=200):
@@ -88,12 +88,12 @@ def block_average(input_data, max_tb=200):
 def parse_timedata(filename):
     """Parse time data from dump command."""
     timeframes = collections.defaultdict(list)
-    with open(filename, 'r') as fo:
+    with open(filename, "r") as fo:
         first_frame = True
         time_step = None
         nrows = 0
         for line in fo:
-            if line.startswith('#'):
+            if line.startswith("#"):
                 continue
             if first_frame:
                 time_step, nrows = map(int, line.split())
@@ -115,7 +115,6 @@ def parse_timedata(filename):
 def load_numpyarray(filename):
     """Loads data from file intro struct numpy array."""
     data = np.loadtxt(filename, skiprows=1)
-    header = [
-        (x, np.float) for x in open(filename).readline().replace('# ', '').split()]
+    header = [(x, np.float) for x in open(filename).readline().replace("# ", "").split()]
     data.dtype = header
     return data

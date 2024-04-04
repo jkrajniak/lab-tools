@@ -24,13 +24,11 @@ import collections
 
 
 def _args():
-    parser = argparse.ArgumentParser('List bonds from LAMMPS of given type')
-    parser.add_argument('input_data', help='Input data file')
-    parser.add_argument('out_list', help='Output file')
-    parser.add_argument('--atom_type', help='Atom type',
-                        required=True, type=int)
-    parser.add_argument('--interactive', action='store_true')
-
+    parser = argparse.ArgumentParser("List bonds from LAMMPS of given type")
+    parser.add_argument("input_data", help="Input data file")
+    parser.add_argument("out_list", help="Output file")
+    parser.add_argument("--atom_type", help="Atom type", required=True, type=int)
+    parser.add_argument("--interactive", action="store_true")
 
     return parser.parse_args()
 
@@ -43,9 +41,9 @@ def main():
 
     out_tuples = set()
 
-    at_with_type = {k for k, v in list(lammps_data.atoms.items()) if v['atom_type'] == args.atom_type}
+    at_with_type = {k for k, v in list(lammps_data.atoms.items()) if v["atom_type"] == args.atom_type}
     out_bonds = collections.defaultdict(list)
-    for bl in list(lammps_data.topology['bonds'].values()):
+    for bl in list(lammps_data.topology["bonds"].values()):
         for b1, b2 in bl:
             if b1 in at_with_type:
                 out_bonds[b1].append(b2)
@@ -54,18 +52,18 @@ def main():
             if b1 in at_with_type or b2 in at_with_type:
                 out_tuples.add(tuple(sorted([b1, b2])))
 
-    out_data = np.array(sorted(out_tuples))
+    np.array(sorted(out_tuples))
 
-    out_file = open(args.out_list, 'w')
-    print(('Write to {}'.format(args.out_list)))
-    out_file.writelines('\n'.join(['{} {}'.format(*x) for x in list(out_bonds.values())]))
+    out_file = open(args.out_list, "w")
+    print(("Write to {}".format(args.out_list)))
+    out_file.writelines("\n".join(["{} {}".format(*x) for x in list(out_bonds.values())]))
     out_file.close()
 
     if args.interactive:
-        import IPython;
+        import IPython
+
         IPython.embed()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
-

@@ -22,10 +22,10 @@ from md_libs import files_io
 
 
 def _args():
-    parser = argparse.ArgumentParser('Copy position from one gro file to other')
-    parser.add_argument('input_gro')
-    parser.add_argument('positions')
-    parser.add_argument('output_gro')
+    parser = argparse.ArgumentParser("Copy position from one gro file to other")
+    parser.add_argument("input_gro")
+    parser.add_argument("positions")
+    parser.add_argument("output_gro")
 
     return parser.parse_args()
 
@@ -39,13 +39,12 @@ def main():
     positions_gro.read()
 
     # Update positions, based on atom id.
-    print('Update positions, based on atom_id')
+    print("Update positions, based on atom_id")
     for at_id, at_data in list(positions_gro.atoms.items()):
         input_gro.atoms[at_id] = input_gro.atoms[at_id]._replace(position=at_data.position)
 
     input_gro.write(args.output_gro, force=True)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
-

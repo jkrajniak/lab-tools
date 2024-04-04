@@ -46,19 +46,19 @@ if [ "$PBS_NODEFILE" != "" ]; then  ## Case when job is running
 
   # Aliases for intel mpi
   alias mpdboot_local="mpdboot -f $PBS_NODEFILE -n $n_node -r ssh -v"
-  alias mpiexec_local="mpiexec -n $n_proc " 
-else 
+  alias mpiexec_local="mpiexec -n $n_proc "
+else
 # Load bash_complete
   for i in /etc/bash_completion.d/*; do
     source $i
   done
-  
+
 # Load module accounting
   module load accounting
 
 # Additional auto_complete function.
 # _qjobs -> auto-complete based on list of jobs submitted
-# _qsub_project -> auto-complete based on list of projects available 
+# _qsub_project -> auto-complete based on list of projects available
   _qjobs() {
     local cur=${COMP_WORDS[COMP_CWORD]}
     COMPREPLY=( $(compgen -W "`qstat | cut -f1 -d' ' | egrep '^[0-9]'`" -- $cur) )
@@ -70,7 +70,7 @@ else
     COMPREPLY=()   # Array variable storing the possible completions.
     prev=${COMP_WORDS[COMP_CWORD-1]}
     cur=${COMP_WORDS[COMP_CWORD]}
-  
+
     case "$prev" in
       -A*)
         if [ "X$_HCP_PROJECTS" == "X" ]; then
@@ -95,7 +95,7 @@ else
   echo -e "\n\n***** BIG DATA QUOTA *****\n"
   mmlsquota -u $USER --block-size G
   mmlsquota -j lts_00009 /dev/vol_ddn2 --block-size G
-  
-fi 
+
+fi
 
 umask 0027

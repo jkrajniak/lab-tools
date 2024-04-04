@@ -27,52 +27,53 @@ import numpy
 
 def _args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--nchains', required=True, type=int)
-    parser.add_argument('--chain_length', required=True, type=int)
-    parser.add_argument('--begin', default=0, type=int)
-    parser.add_argument('--end', default=-1, type=int)
-    parser.add_argument('--output')
-    parser.add_argument('--output_prefix', default='')
-    parser.add_argument('--csv', action='store_true')
-    parser.add_argument('--group', default='atoms')
-    parser.add_argument('--nt', default=1, type=int)
-    parser.add_argument('in_file')
+    parser.add_argument("--nchains", required=True, type=int)
+    parser.add_argument("--chain_length", required=True, type=int)
+    parser.add_argument("--begin", default=0, type=int)
+    parser.add_argument("--end", default=-1, type=int)
+    parser.add_argument("--output")
+    parser.add_argument("--output_prefix", default="")
+    parser.add_argument("--csv", action="store_true")
+    parser.add_argument("--group", default="atoms")
+    parser.add_argument("--nt", default=1, type=int)
+    parser.add_argument("in_file")
 
     return parser.parse_args()
 
 
 def calculate_msd_int(nchains, chain_length, box, trj):
-    return bonds.calculate_msd_internal_distance(trj, nchains, chain_length, box, 0.5*box)
+    return bonds.calculate_msd_internal_distance(trj, nchains, chain_length, box, 0.5 * box)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     args = _args()
     data = h5py.File(args.in_file)
 
-    trj = data['/particles/{}/position/value'.format(args.group)][args.begin:args.end]
-    box = numpy.array(data['/particles/{}/box/edges'.format(args.group)])
-    if 'image' in list(data['/particles/{}'.format(args.group)].keys()):
-        print('Found image dataset, computing absolute trajectory...')
-        image = numpy.array(data['/particles/{}/image/value'.format(args.group)][args.begin:args.end])
-        trj = trj + box*image
+    trj = data["/particles/{}/position/value".format(args.group)][args.begin : args.end]
+    box = numpy.array(data["/particles/{}/box/edges".format(args.group)])
+    if "image" in list(data["/particles/{}".format(args.group)].keys()):
+        print("Found image dataset, computing absolute trajectory...")
+        image = numpy.array(data["/particles/{}/image/value".format(args.group)][args.begin : args.end])
+        trj = trj + box * image
 
     nt = args.nt
     args.begin = 0
     if args.end == -1:
         args.end = len(trj)
     num_frames = args.end
-    print(('Trajectory length: {}'.format(num_frames)))
-    print(('Number of chains: {}'.format(args.nchains)))
-    print(('Length of chain: {}'.format(args.chain_length)))
-    
-    print(('Distribute work on {} process'.format(args.nt)))
+    print(("Trajectory length: {}".format(num_frames)))
+    print(("Number of chains: {}".format(args.nchains)))
+    print(("Length of chain: {}".format(args.chain_length)))
+
+    print(("Distribute work on {} process".format(args.nt)))
     func = functools.partial(calculate_msd_int, args.nchains, args.chain_length, box)
     pool = mp.Pool(processes=args.nt)
     results = pool.map(func, trj)
-    
+
     pool.close()
     pool.join()
 
-    print('Collecting data...')
+    print("Collecting data...")
 
     # Combine output, calculates std.
     n_length = len(results[0])
@@ -80,21 +81,21 @@ if __name__ == '__main__':
     for r in results:
         for n in range(n_length):
             data[n].extend(r[n])
-    
-    print('Preparing to save...')
+
+    print("Preparing to save...")
     # n, r^2, std(r^2)
     output_data = numpy.zeros(shape=(n_length, 3))
     for n in range(n_length):
         output_data[n][0] = n
         output_data[n][1] = numpy.average(data[n])
-        output_data[n][2] = numpy.std(data[n], ddof=1)/numpy.sqrt(len(data[n]))
-    
-    output = '{}msd_{}'.format(args.output_prefix, ''.join(args.in_file.split('.')[0:-1]))
+        output_data[n][2] = numpy.std(data[n], ddof=1) / numpy.sqrt(len(data[n]))
+
+    output = "{}msd_{}".format(args.output_prefix, "".join(args.in_file.split(".")[0:-1]))
     if args.output:
         output = args.output
     if args.csv:
-        output += '.csv'
+        output += ".csv"
         numpy.savetxt(output, output_data)
     else:
         numpy.save(output, output_data)
-    print(('Saving to {}...'.format(output)))
+    print(("Saving to {}...".format(output)))

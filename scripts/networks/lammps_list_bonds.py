@@ -17,21 +17,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import argparse
-import numpy as np
 
 
 def _args():
-    parser = argparse.ArgumentParser('List bonds from LAMMPS of given type')
-    parser.add_argument('input_data', help='Input data file')
+    parser = argparse.ArgumentParser("List bonds from LAMMPS of given type")
+    parser.add_argument("input_data", help="Input data file")
 
     return parser.parse_args()
 
 
 def main():
-    args = _args()
+    _args()
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
-

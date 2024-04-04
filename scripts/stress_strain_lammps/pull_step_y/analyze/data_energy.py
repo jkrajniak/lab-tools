@@ -17,7 +17,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import argparse
 import numpy as np
 import os
 import sys
@@ -28,28 +27,28 @@ def calculate_data(fname):
     columns = (0, 7, 8, 9, 10, 11)
     scale = np.array([1.0 for _ in columns])
     block_size = 100.0
-    input_data = np.loadtxt(fname)[:, columns]*scale
-    avg = np.average(input_data[::int(block_size)], axis=0)
-    std = np.std(input_data[::int(block_size)], axis=0)*np.sqrt(1.0/input_data[::int(block_size)].shape[0])
+    input_data = np.loadtxt(fname)[:, columns] * scale
+    avg = np.average(input_data[:: int(block_size)], axis=0)
+    std = np.std(input_data[:: int(block_size)], axis=0) * np.sqrt(1.0 / input_data[:: int(block_size)].shape[0])
     return [x for p in zip(avg, std) for x in p]
 
 
 def sort_key(x):
-    tmp = x.split('.')
+    tmp = x.split(".")
     if len(tmp) == 4:
-        if tmp[1] == 'init':
+        if tmp[1] == "init":
             return -1
         else:
             return int(tmp[1])
     else:
-        if tmp[2] == 'init':
+        if tmp[2] == "init":
             return -1
         else:
             return int(tmp[2])
 
 
 def main():
-    xvg_files = [f for f in os.listdir('.') if f.endswith('xvg')]
+    xvg_files = [f for f in os.listdir(".") if f.endswith("xvg")]
     xvg_files.sort(key=sort_key)
 
     output = []
@@ -57,8 +56,8 @@ def main():
     p = mp.Pool()
     output = p.map(calculate_data, xvg_files)
 
-    np.savetxt(sys.argv[1], output, header='s std pe pe_std ebond ebond_std eangle eangle_std edih edih_std eimp eimp_std')
+    np.savetxt(sys.argv[1], output, header="s std pe pe_std ebond ebond_std eangle eangle_std edih edih_std eimp eimp_std")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

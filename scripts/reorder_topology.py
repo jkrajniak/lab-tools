@@ -20,17 +20,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import argparse
 from md_libs import files_io
 
-__doc__ = 'Reorder atoms in topology, to match the order in coordinate file.'
+__doc__ = "Reorder atoms in topology, to match the order in coordinate file."
 
 
 def _args():
-    parser = argparse.ArgumentParser('Reorder atoms in topology to match what is in coord file.')
-    parser.add_argument('--in_top', required=True)
-    parser.add_argument('--out_top', required=True)
-    parser.add_argument('--coord', required=True)
-    parser.add_argument('--clean', action='store_true', default=False)
-    parser.add_argument('--zero_charge', action='store_true', default=False, help='Zero partial charge')
-    parser.add_argument('--remove_cross', action='store_true', default=False)
+    parser = argparse.ArgumentParser("Reorder atoms in topology to match what is in coord file.")
+    parser.add_argument("--in_top", required=True)
+    parser.add_argument("--out_top", required=True)
+    parser.add_argument("--coord", required=True)
+    parser.add_argument("--clean", action="store_true", default=False)
+    parser.add_argument("--zero_charge", action="store_true", default=False, help="Zero partial charge")
+    parser.add_argument("--remove_cross", action="store_true", default=False)
 
     return parser.parse_args()
 
@@ -45,9 +45,9 @@ def generate_list(input_list, id_map, clean=False):
             except KeyError:
                 continue
     else:
-        output = {tuple([id_map[x] for x in k]): v
-                 for k, v in list(input_list.items())}
+        output = {tuple([id_map[x] for x in k]): v for k, v in list(input_list.items())}
     return output
+
 
 def main():
     args = _args()
@@ -59,12 +59,8 @@ def main():
     coord.read()
 
     # chain_idx:chain_name:atom_name
-    input_name2id = {
-        '{}:{}:{}'.format(v.chain_idx, v.chain_name, v.name): k
-        for k, v in coord.atoms.items()}
-    topol_name2id = {
-        '{}:{}:{}'.format(v.chain_idx, v.chain_name, v.name): k
-        for k, v in in_top.atoms.items()}
+    input_name2id = {"{}:{}:{}".format(v.chain_idx, v.chain_name, v.name): k for k, v in coord.atoms.items()}
+    topol_name2id = {"{}:{}:{}".format(v.chain_idx, v.chain_name, v.name): k for k, v in in_top.atoms.items()}
 
     # Map topol id -> atom_id
     topol_old2new = {}
@@ -72,9 +68,7 @@ def main():
         for x in input_name2id:
             topol_old2new[topol_name2id[x]] = input_name2id[x]
     else:
-        topol_old2new = {
-            topol_name2id[x]: input_name2id[x] for x in topol_name2id
-        }
+        topol_old2new = {topol_name2id[x]: input_name2id[x] for x in topol_name2id}
 
     new_topol_atoms = {}
     for x in in_top.atoms:
@@ -83,17 +77,17 @@ def main():
             at.atom_id = topol_old2new[x]
             at.cgnr = at.atom_id
         except KeyError:
-            print(('Skiping atom {}:{}'.format(at.chain_name, at.name)))
+            print(("Skiping atom {}:{}".format(at.chain_name, at.name)))
             continue
         new_topol_atoms[topol_old2new[x]] = at
         if args.zero_charge:
             at.charge = 0.0
 
     if args.remove_cross:
-        in_top.atomtypes = {k: v for k, v in list(in_top.atomtypes.items()) if v['type'] != 'V'}
+        in_top.atomtypes = {k: v for k, v in list(in_top.atomtypes.items()) if v["type"] != "V"}
 
-    in_top.header_section.insert(0, '; input_topol: {}\n; conf: {}\n'.format(args.in_top, args.coord))
-    in_top.header_section.insert(1, '; clean: {}\n; remove_cross: {}\n'.format(args.clean, args.remove_cross))
+    in_top.header_section.insert(0, "; input_topol: {}\n; conf: {}\n".format(args.in_top, args.coord))
+    in_top.header_section.insert(1, "; clean: {}\n; remove_cross: {}\n".format(args.clean, args.remove_cross))
 
     in_top.atoms = new_topol_atoms
 
@@ -128,5 +122,6 @@ def main():
 
     in_top.write(args.out_top, force=True)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

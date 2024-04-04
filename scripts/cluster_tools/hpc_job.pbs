@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 #PBS -N NAME
 #PBS -l mem=16gb
 #PBS -l walltime=24:00:00

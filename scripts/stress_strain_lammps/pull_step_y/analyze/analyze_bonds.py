@@ -21,26 +21,24 @@ import argparse
 import numpy as np
 import os
 import cPickle
-import collections
 import multiprocessing as mp
 
 
 def read_inputdata(input_file):
     timeseries_data = []
-    with open(input_file, 'r') as inputf:
+    with open(input_file, "r") as inputf:
         timestep_item = False
         entries_item = False
-        entries_header = None
         timestep_data = []
         for inline in inputf:
-            if 'ITEM: TIMESTEP' in inline:
+            if "ITEM: TIMESTEP" in inline:
                 timestep_item = True
                 entries_item = False
                 continue
-            elif 'ITEM: ENTRIES' in inline:
+            elif "ITEM: ENTRIES" in inline:
                 entries_item = True
                 timestep_item = False
-                entries_header = inline.split()[2:]
+                inline.split()[2:]
                 continue
             if timestep_item:
                 timestep = int(inline)
@@ -48,7 +46,7 @@ def read_inputdata(input_file):
                 if not timestep_data:
                     continue
                 timestep_data = np.array(timestep_data)
-                tmp_data = np.zeros((timestep_data.shape[0], timestep_data.shape[1]+1))
+                tmp_data = np.zeros((timestep_data.shape[0], timestep_data.shape[1] + 1))
                 tmp_data[:, 0] = timestep
                 tmp_data[:, 1:] = timestep_data
                 timeseries_data.append(tmp_data)
@@ -60,30 +58,29 @@ def read_inputdata(input_file):
 
 def _args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('output_file')
-    parser.add_argument('--single_file', default=None)
-    parser.add_argument('--fileprefix', default='')
-    parser.add_argument('--filesuffix', default='')
-    parser.add_argument('--append', action='store_true')
+    parser.add_argument("output_file")
+    parser.add_argument("--single_file", default=None)
+    parser.add_argument("--fileprefix", default="")
+    parser.add_argument("--filesuffix", default="")
+    parser.add_argument("--append", action="store_true")
 
     return parser.parse_args()
 
 
 def process_file(filename):
-    print('Processing {}'.format(filename))
+    print("Processing {}".format(filename))
     d = np.asfarray(read_inputdata(filename))
     if d.shape[0] == 0:
-        print('File {} empty, skip'.format(filename))
+        print("File {} empty, skip".format(filename))
         return (filename, None, None, None)
-    bond_types = set(d[:,...,1].flat)
-    print('Bond types: {}'.format(len(bond_types)))
+    bond_types = set(d[:, ..., 1].flat)
+    print("Bond types: {}".format(len(bond_types)))
     hist_per_bond = {}
     for bt in bond_types:
-        hist_per_bond[bt] = np.histogram(d[d[:,...,1] == bt][:,...,4], bins='auto')
-    global_hist = np.histogram(d[:,...,4], bins='auto')
+        hist_per_bond[bt] = np.histogram(d[d[:, ..., 1] == bt][:, ..., 4], bins="auto")
+    global_hist = np.histogram(d[:, ..., 4], bins="auto")
 
     return (filename, bond_types, hist_per_bond, global_hist)
-
 
 
 def main():
@@ -94,16 +91,14 @@ def main():
     else:
         pool = mp.Pool()
         output_data = pool.map(
-            process_file,
-            [f for f in os.listdir('.')
-             if f.startswith(args.fileprefix) and f.endswith(args.filesuffix)])
+            process_file, [f for f in os.listdir(".") if f.startswith(args.fileprefix) and f.endswith(args.filesuffix)]
+        )
 
-    with open(args.output_file, 'wb') as output_file:
+    with open(args.output_file, "wb") as output_file:
         cPickle.dump(output_data, output_file)
 
-    print('Saved data to {}'.format(args.output_file))
+    print("Saved data to {}".format(args.output_file))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
-

@@ -14,7 +14,7 @@ Usage
 Settings
 -----------
 
-The list of remote paths should be placed in `~/.sshfs` file. The format is quite simple. 
+The list of remote paths should be placed in `~/.sshfs` file. The format is quite simple.
 You can place default options in `DEFAULT` variable at the beginning of the file. Next, in the following lines you can define the remote paths and the location in local file system.
 
 ```bash

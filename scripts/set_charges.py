@@ -23,12 +23,14 @@ from md_libs import files_io
 
 
 def _args():
-    parser = argparse.ArgumentParser('Update charges in GROMACS topology')
-    parser.add_argument('input_topol', help='Input topology')
-    parser.add_argument('charge_map', help='New charges, format: atom_name:charge,atom_name:charge')
-    parser.add_argument('--zero_charge', action='store_true',
-                        help=('If set to true, then the total charge of molecules'
-                              ' in topology is made to be zero'))
+    parser = argparse.ArgumentParser("Update charges in GROMACS topology")
+    parser.add_argument("input_topol", help="Input topology")
+    parser.add_argument("charge_map", help="New charges, format: atom_name:charge,atom_name:charge")
+    parser.add_argument(
+        "--zero_charge",
+        action="store_true",
+        help=("If set to true, then the total charge of molecules" " in topology is made to be zero"),
+    )
 
     return parser.parse_args()
 
@@ -40,19 +42,19 @@ def main():
     in_top.read()
 
     at_name2charge = {}
-    for x in args.charge_map.split(','):
-        z = x.split(':')
+    for x in args.charge_map.split(","):
+        z = x.split(":")
         at_name2charge[z[0]] = float(z[1])
 
     print(at_name2charge)
     current_charge = sum([x.charge for x in list(in_top.atoms.values())])
-    print(('Current total charge: {}'.format(current_charge)))
+    print(("Current total charge: {}".format(current_charge)))
 
     for at_data in list(in_top.atoms.values()):
         if at_data.name in at_name2charge:
             at_data.charge = at_name2charge[at_data.name]
     current_charge = sum([x.charge for x in list(in_top.atoms.values())])
-    print(('New total charge: {}'.format(current_charge)))
+    print(("New total charge: {}".format(current_charge)))
     if args.zero_charge:
         charge_map = {x.name: x.charge for x in list(in_top.atoms.values())}
         num_charges = len(in_top.atoms) - len([k for k in at_name2charge if k in charge_map])
@@ -61,10 +63,10 @@ def main():
             if at_data.name not in at_name2charge:
                 at_data.charge -= delta_charge
         current_charge = sum([x.charge for x in list(in_top.atoms.values())])
-        print(('New total charge: {}'.format(current_charge)))
+        print(("New total charge: {}".format(current_charge)))
 
     in_top.write(force=True)
 
-if __name__ == '__main__':
-    main()
 
+if __name__ == "__main__":
+    main()

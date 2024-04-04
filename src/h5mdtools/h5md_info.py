@@ -22,8 +22,8 @@ import h5py
 
 
 def _args():
-    parser = argparse.ArgumentParser('Basic information about h5md trajectory file.')
-    parser.add_argument('input_file')
+    parser = argparse.ArgumentParser("Basic information about h5md trajectory file.")
+    parser.add_argument("input_file")
 
     return parser.parse_args()
 
@@ -31,15 +31,16 @@ def _args():
 def main():
     args = _args()
 
-    h5 = h5py.File(args.input_file, 'r')
+    h5 = h5py.File(args.input_file, "r")
 
-    groups = h5['/particles/'].keys()
-    max_time = max(h5['/particles/{}/position/time'.format(groups[0])])
-    print('File: {}'.format(args.input_file))
-    print('H5MD groups: {}'.format(groups))
-    print('Max time: {}'.format(max_time))
+    groups = list(h5["/particles/"].keys())
+    max_time = max(h5["/particles/{}/position/time".format(groups[0])])
+    print(("File: {}".format(args.input_file)))
+    print(("H5MD groups: {}".format(groups)))
+    print(("Max time: {}".format(max_time)))
 
     h5.close()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

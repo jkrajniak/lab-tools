@@ -23,12 +23,12 @@ from md_libs import files_io
 
 
 def _args():
-    parser = argparse.ArgumentParser((
-        'This tool tries to make the particle index'
-        ' continuous in the topology and in the coordinate files'))
-    parser.add_argument('in_file', help='Input topology to fix')
-    parser.add_argument('out_file', help='Input coordinate file')
-    parser.add_argument('--remap_names', default=None)
+    parser = argparse.ArgumentParser(
+        ("This tool tries to make the particle index" " continuous in the topology and in the coordinate files")
+    )
+    parser.add_argument("in_file", help="Input topology to fix")
+    parser.add_argument("out_file", help="Input coordinate file")
+    parser.add_argument("--remap_names", default=None)
 
     return parser.parse_args()
 
@@ -78,31 +78,32 @@ def fix_gro(in_gro, remap_names=None):
             ch_idx += 1
             last_chidx = in_gro.atoms[at_id].chain_idx
         at_data = in_gro.atoms[at_id]
-        new_atoms[at_idx] = in_gro.atoms[at_id]._replace(atom_id=at_idx, chain_idx=ch_idx, name=remap_names.get(at_data.name, at_data.name))
+        new_atoms[at_idx] = in_gro.atoms[at_id]._replace(
+            atom_id=at_idx, chain_idx=ch_idx, name=remap_names.get(at_data.name, at_data.name)
+        )
         at_idx += 1
     in_gro.atoms = new_atoms
+
 
 def main():
     args = _args()
     in_file = None
-    topol = False
     remap_names = {}
     if args.remap_names:
-        remap_names = dict(tuple(x.split(':')) for x in args.remap_names.split(','))
-    if args.in_file.endswith('top'):
+        remap_names = dict(tuple(x.split(":")) for x in args.remap_names.split(","))
+    if args.in_file.endswith("top"):
         in_file = files_io.GROMACSTopologyFile(args.in_file)
         in_file.read()
-        topol = True
         fix_topol(in_file, remap_names)
         in_file.write(args.out_file, force=True)
-    elif args.in_file.endswith('gro'):
+    elif args.in_file.endswith("gro"):
         in_file = files_io.GROFile(args.in_file)
         in_file.read()
         fix_gro(in_file, remap_names)
         in_file.write(args.out_file, force=True)
     else:
-        raise RuntimeError('Unknown input file')
+        raise RuntimeError("Unknown input file")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
-

@@ -20,11 +20,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import argparse
 import datetime
 import numpy as np
+
 try:
     import MDAnalysis
-    SUPPORT_GROMACS=True
+
+    SUPPORT_GROMACS = True
 except ImportError:
-    SUPPORT_GROMACS=False
+    SUPPORT_GROMACS = False
 import time
 
 import h5py
@@ -39,34 +41,29 @@ rank = MPI.COMM_WORLD.rank
 
 class ListAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string):
-        setattr(
-            namespace,
-            option_string.replace('-', ''),
-            [list(map(int, x.split('-'))) for x in values.split(',')]
-        )
+        setattr(namespace, option_string.replace("-", ""), [list(map(int, x.split("-"))) for x in values.split(",")])
 
 
 def _args():
-    parser = argparse.ArgumentParser('Analyze bond distance')
-    parser.add_argument('--trj', help='Trajectory file', required=True)
-    parser.add_argument('--top', help='Topology file')
-    parser.add_argument('--molecules', help='Number of molecules', required=True, type=int)
-    parser.add_argument('--N', help='Number of atoms in molecule', required=True, type=int)
-    parser.add_argument('--group', help='Atoms group (only for H5MD)', required=False)
-    parser.add_argument('--vector', help='Vector, in format 1-12', action=ListAction, default=[],
-                        required=True)
-    parser.add_argument('--box_left', help='Bottom front left point of the box, format (x, y, z)')
-    parser.add_argument('--box_right', help='Top rear right point of the box, format (x, y, z)')
-    parser.add_argument('--begin', help='Begin frame', default=0, type=int)
-    parser.add_argument('--end', help='End frame', default=-1, type=int)
-    parser.add_argument('--prefix', help='Prefix')
+    parser = argparse.ArgumentParser("Analyze bond distance")
+    parser.add_argument("--trj", help="Trajectory file", required=True)
+    parser.add_argument("--top", help="Topology file")
+    parser.add_argument("--molecules", help="Number of molecules", required=True, type=int)
+    parser.add_argument("--N", help="Number of atoms in molecule", required=True, type=int)
+    parser.add_argument("--group", help="Atoms group (only for H5MD)", required=False)
+    parser.add_argument("--vector", help="Vector, in format 1-12", action=ListAction, default=[], required=True)
+    parser.add_argument("--box_left", help="Bottom front left point of the box, format (x, y, z)")
+    parser.add_argument("--box_right", help="Top rear right point of the box, format (x, y, z)")
+    parser.add_argument("--begin", help="Begin frame", default=0, type=int)
+    parser.add_argument("--end", help="End frame", default=-1, type=int)
+    parser.add_argument("--prefix", help="Prefix")
     args = parser.parse_args()
 
     return args
 
 
 def replicate_list(input_list, mol, N, shift=-1, cmplx=False):
-    rr = [[i+x*N+shift for i in v] for x in range(mol) for v in input_list]
+    rr = [[i + x * N + shift for i in v] for x in range(mol) for v in input_list]
     if cmplx:
         return rr
     else:
@@ -80,24 +77,22 @@ def _gromacs_processing(args, q_vector, start_stop_list, pos_cons):
     start_stop = start_stop_list[pid]
     vectors = []
 
-    process_tuples = [
-        [vectors, q_vector, 2, bond_libs.calculate_bond_vec]
-    ]
+    process_tuples = [[vectors, q_vector, 2, bond_libs.calculate_bond_vec]]
 
     trj = MDAnalysis.coordinates.reader(args.trj)
     box = np.array(trj.ts.dimensions[:3])
-    half_box = 0.5*box
+    half_box = 0.5 * box
 
     if args.end == -1:
         args.end = trj.n_frames
 
-    MDAnalysis.core.flags['use_periodic_selections'] = True
-    MDAnalysis.core.flags['use_KDTree_routines'] = False
+    MDAnalysis.core.flags["use_periodic_selections"] = True
+    MDAnalysis.core.flags["use_KDTree_routines"] = False
 
-    print('%d processing %s, pos_cons %s' % (pid, start_stop, pos_cons))
+    print("%d processing %s, pos_cons %s" % (pid, start_stop, pos_cons))
     frame_idx = start_stop[0]
-    for t in trj[start_stop[0]:start_stop[1]]:
-        print('Frame %d' % frame_idx)
+    for t in trj[start_stop[0] : start_stop[1]]:
+        print("Frame %d" % frame_idx)
         for output, atom_ids, tuple_size, functor in process_tuples:
             if atom_ids is None or atom_ids.size == 0:
                 continue
@@ -107,9 +102,11 @@ def _gromacs_processing(args, q_vector, start_stop_list, pos_cons):
             for d_tuple in atoms:
                 valid = False
                 for a in d_tuple:
-                    if ((a[0] >= pos_cons[0][0] and a[0] <= pos_cons[1][0]) and
-                        (a[1] >= pos_cons[0][1] and a[1] <= pos_cons[1][1]) and
-                        (a[2] >= pos_cons[0][2] and a[2] <= pos_cons[1][2])):
+                    if (
+                        (a[0] >= pos_cons[0][0] and a[0] <= pos_cons[1][0])
+                        and (a[1] >= pos_cons[0][1] and a[1] <= pos_cons[1][1])
+                        and (a[2] >= pos_cons[0][2] and a[2] <= pos_cons[1][2])
+                    ):
                         valid = True
                     else:
                         valid = False
@@ -131,17 +128,16 @@ def _h5_processing(args, q_vector, start_stop_list, pos_cons):
         if pid >= len(start_stop_list):
             return []
         start_stop = start_stop_list[pid]
-        h5file = h5py.File(args.trj, 'r', driver='mpio', comm=MPI.COMM_WORLD)
+        h5file = h5py.File(args.trj, "r", driver="mpio", comm=MPI.COMM_WORLD)
     else:
-        h5file = h5py.File(args.trj, 'r')
+        h5file = h5py.File(args.trj, "r")
         start_stop = start_stop_list[0]
 
-    _, box, trj, _ = files_io.prepare_h5md(h5file, at_group, start_stop[0], start_stop[1])    
+    _, box, trj, _ = files_io.prepare_h5md(h5file, at_group, start_stop[0], start_stop[1])
 
-    half_box = 0.5*box
+    half_box = 0.5 * box
 
     vectors = []
-    
 
     process_tuples = [
         [vectors, q_vector, bond_libs.calculate_bond_vec],
@@ -149,7 +145,7 @@ def _h5_processing(args, q_vector, start_stop_list, pos_cons):
 
     frame_idx = start_stop[0]
     for frame in trj:
-        print(('Frame {}'.format(frame_idx)))
+        print(("Frame {}".format(frame_idx)))
         for output, atom_ids, functor in process_tuples:
             if atom_ids is None or atom_ids.size == 0:
                 continue
@@ -165,29 +161,24 @@ def _h5_processing(args, q_vector, start_stop_list, pos_cons):
 def _get_info(args):
     """Return information about box and trajectory."""
 
-    if (args.trj.endswith('trr') or args.trj.endswith('xtc')) and SUPPORT_GROMACS:
+    if (args.trj.endswith("trr") or args.trj.endswith("xtc")) and SUPPORT_GROMACS:
         trj = MDAnalysis.coordinates.reader(args.trj)
         box = np.array(trj.ts.dimensions[:3])
         return box, trj.n_frames, True
-    elif args.trj.endswith('h5'):
-        h5file = h5py.File(args.trj, 'r')
-        trj = h5file['particles/{}/position/value'.format(args.group)]
-        box = np.array(h5file['particles/{}/box/edges'.format(args.group)])
+    elif args.trj.endswith("h5"):
+        h5file = h5py.File(args.trj, "r")
+        trj = h5file["particles/{}/position/value".format(args.group)]
+        box = np.array(h5file["particles/{}/box/edges".format(args.group)])
         return box, len(trj), True
     else:
-        raise RuntimeError('Wrong trajectory')
-
+        raise RuntimeError("Wrong trajectory")
 
 
 def save_data(name, array, definitions, filename_prefix, file_template):
     for idx, definition in enumerate(definitions):
-        filename = '%s%s_%s.dat' % (
-            filename_prefix, name, '_'.join(map(str, definition)))
-        print(('Saving file {}.npy'.format(filename)))
-        np.save(filename, np.array([
-            np.array([x for x in arr[idx::len(definitions)] if x is not None])
-            for arr in array
-        ]))
+        filename = "%s%s_%s.dat" % (filename_prefix, name, "_".join(map(str, definition)))
+        print(("Saving file {}.npy".format(filename)))
+        np.save(filename, np.array([np.array([x for x in arr[idx :: len(definitions)] if x is not None]) for arr in array]))
 
 
 def main_local():
@@ -198,12 +189,12 @@ def main_local():
     if args.end == -1:
         args.end = numframes
 
-    print(('Box: {}'.format(box)))
-    print(('Frames: {}'.format(numframes)))
+    print(("Box: {}".format(box)))
+    print(("Frames: {}".format(numframes)))
 
     if args.box_left and args.box_right:
-        x0, y0, z0 = list(map(float, args.box_left.split(',')))
-        x1, y1, z1 = list(map(float, args.box_right.split(',')))
+        x0, y0, z0 = list(map(float, args.box_left.split(",")))
+        x1, y1, z1 = list(map(float, args.box_right.split(",")))
         pos_cons = ((x0, y0, z0), (x1, y1, z1))
     else:
         pos_cons = ((0.0, 0.0, 0.0), tuple(box))
@@ -213,44 +204,40 @@ def main_local():
     if nt > 1:
         num_frames = args.end - args.begin
         per_process = int(round(num_frames / float(nt)))
-        print('per_process', per_process)
+        print("per_process", per_process)
         frame_ranges = list(range(args.begin, args.end, per_process))
-        frame_range_list = [
-            (frame_ranges[i], frame_ranges[i+1]) for i in range(len(frame_ranges)-1)
-        ]
-        frame_range_list.append((frame_ranges[-1], args.end+1))  # Because it is right open range
+        frame_range_list = [(frame_ranges[i], frame_ranges[i + 1]) for i in range(len(frame_ranges) - 1)]
+        frame_range_list.append((frame_ranges[-1], args.end + 1))  # Because it is right open range
     else:
         frame_range_list = [(args.begin, args.end)]
 
-    print(('Frame range: {}'.format(frame_range_list)))
+    print(("Frame range: {}".format(frame_range_list)))
     # Q
     q_vector = np.array(replicate_list(args.vector, args.molecules, args.N, cmplx=cmplx))
 
     # PMI run
     import pmi
+
     pmi.setup()
     pmi.execfile_(__file__)
-    if (args.trj.endswith('trr') or args.trj.endswith('xtc')) and SUPPORT_GROMACS:
-        data = pmi.invoke(
-            '_gromacs_processing',
-            args, q_vector, frame_range_list, pos_cons)
-    elif args.trj.endswith('h5'):
-        data = pmi.invoke(
-            '_h5_processing',
-            args, q_vector, frame_range_list, pos_cons)
+    if (args.trj.endswith("trr") or args.trj.endswith("xtc")) and SUPPORT_GROMACS:
+        data = pmi.invoke("_gromacs_processing", args, q_vector, frame_range_list, pos_cons)
+    elif args.trj.endswith("h5"):
+        data = pmi.invoke("_h5_processing", args, q_vector, frame_range_list, pos_cons)
     else:
-        raise RuntimeError('Wrong trajectory file')
+        raise RuntimeError("Wrong trajectory file")
 
     # Collect datas
     vectors = []
     for node_data in data:
         vectors.extend([v for v in node_data])
 
-    filename_prefix = '' if not args.prefix else args.prefix + '_'
-    file_template = '# Date: %s\n# Filename: %s\n' % (datetime.datetime.today(), args.trj)
-    print('Saving data...')
-    save_data('vector', vectors, args.vector, filename_prefix, file_template)
-    print(('Processing time: {}s with {} CPUs'.format(time.time() - time0, nt)))
+    filename_prefix = "" if not args.prefix else args.prefix + "_"
+    file_template = "# Date: %s\n# Filename: %s\n" % (datetime.datetime.today(), args.trj)
+    print("Saving data...")
+    save_data("vector", vectors, args.vector, filename_prefix, file_template)
+    print(("Processing time: {}s with {} CPUs".format(time.time() - time0, nt)))
 
-if __name__ != 'pmi':
+
+if __name__ != "pmi":
     main_local()

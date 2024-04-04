@@ -22,8 +22,8 @@ from md_libs import files_io
 
 
 def _args():
-    parser = argparse.ArgumentParser('Sort dihedrals into improper and proper')
-    parser.add_argument('topology')
+    parser = argparse.ArgumentParser("Sort dihedrals into improper and proper")
+    parser.add_argument("topology")
 
     return parser.parse_args()
 
@@ -39,6 +39,6 @@ def main():
     in_top.dihedrals = {k: v for k, v in list(in_top.dihedrals.items()) if int(v[0]) != 1}
     in_top.write(force=True)
 
-if __name__ == '__main__':
-    main()
 
+if __name__ == "__main__":
+    main()

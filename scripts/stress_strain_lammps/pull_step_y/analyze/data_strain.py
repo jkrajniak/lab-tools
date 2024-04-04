@@ -17,59 +17,59 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import argparse
 import math
 import numpy as np
 import os
 import sys
-import multiprocessing as mp
 
 
 def calculate_data(fname):
     columns = (0, 1, 2, 3, 4, 5, 6)
     scale = np.array([1.0, -0.101325, -0.101325, -0.101325, 1.0, 1.0, 1.0])
-    input_data = np.loadtxt(fname)[:, columns]*scale
+    input_data = np.loadtxt(fname)[:, columns] * scale
     data_length = input_data.shape[0]
-    input_data = input_data[int(data_length/2):]
+    input_data = input_data[int(data_length / 2) :]
 
     number_of_samples = 100
-    block_size = math.ceil(input_data.shape[0]/number_of_samples)
+    block_size = math.ceil(input_data.shape[0] / number_of_samples)
     if block_size < 1.0:
         block_size = 1
-    print('bloc size: {}'.format(block_size))
-    print('data size: {}'.format(input_data.shape[0]))
-    avg = np.average(input_data[::int(block_size)], axis=0)
-    std = np.std(input_data[::int(block_size)], axis=0)/np.sqrt(input_data[::int(block_size)].shape[0]-1)
+    print("bloc size: {}".format(block_size))
+    print("data size: {}".format(input_data.shape[0]))
+    avg = np.average(input_data[:: int(block_size)], axis=0)
+    std = np.std(input_data[:: int(block_size)], axis=0) / np.sqrt(input_data[:: int(block_size)].shape[0] - 1)
     return [x for p in zip(avg, std) for x in p]
 
+
 def sort_key(x):
-    tmp = x.split('.')
+    tmp = x.split(".")
     if len(tmp) == 4:
-        if tmp[1] == 'init':
+        if tmp[1] == "init":
             return -1
         else:
             return int(tmp[1])
     else:
-        if tmp[2] == 'init':
+        if tmp[2] == "init":
             return -1
         else:
             return int(tmp[2])
 
+
 def main():
-    xvg_files = [f for f in os.listdir('.') if f.endswith('xvg')]
+    xvg_files = [f for f in os.listdir(".") if f.endswith("xvg")]
 
     xvg_files.sort(key=sort_key)
 
     output = []
 
-    #p = mp.Pool()
+    # p = mp.Pool()
     for xvg in xvg_files:
-        print('File: {}'.format(xvg))
+        print("File: {}".format(xvg))
         output.append(calculate_data(xvg))
-    #output = p.map(calculate_data, xvg_files)
+    # output = p.map(calculate_data, xvg_files)
 
-    np.savetxt(sys.argv[1], output, header='s std pxx pxx_std pyy pyy_std pzz pzz_std lx lx_std ly ly_std lz lz_std')
+    np.savetxt(sys.argv[1], output, header="s std pxx pxx_std pyy pyy_std pzz pzz_std lx lx_std ly ly_std lz lz_std")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

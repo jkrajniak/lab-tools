@@ -25,44 +25,43 @@ from md_libs import files_io
 
 
 def _args():
-    parser = argparse.ArgumentParser('Update atom positions of input gro file from H5MD file.')
-    parser.add_argument('--h5', required=True)
-    parser.add_argument('--group', required=True)
-    parser.add_argument('--input_gro', required=True)
-    parser.add_argument('--output', required=True)
-    parser.add_argument('--frame', type=int, default=-1)
-    parser.add_argument('--unfolded', action='store_true', default=False)
-    parser.add_argument('--valid_species')
-    parser.add_argument('--scale_factor', default=1.0, type=float)
-    parser.add_argument('--store_trajectory', action='store_true', default=False,
-                        help='Store whole trajectory')
-    parser.add_argument('-b', help='Begin of trajectory', default=0, type=int)
-    parser.add_argument('-e', help='End of trajectory', default=-1, type=int)
-    parser.add_argument('--extend', action='store_true')
+    parser = argparse.ArgumentParser("Update atom positions of input gro file from H5MD file.")
+    parser.add_argument("--h5", required=True)
+    parser.add_argument("--group", required=True)
+    parser.add_argument("--input_gro", required=True)
+    parser.add_argument("--output", required=True)
+    parser.add_argument("--frame", type=int, default=-1)
+    parser.add_argument("--unfolded", action="store_true", default=False)
+    parser.add_argument("--valid_species")
+    parser.add_argument("--scale_factor", default=1.0, type=float)
+    parser.add_argument("--store_trajectory", action="store_true", default=False, help="Store whole trajectory")
+    parser.add_argument("-b", help="Begin of trajectory", default=0, type=int)
+    parser.add_argument("-e", help="End of trajectory", default=-1, type=int)
+    parser.add_argument("--extend", action="store_true")
     return parser.parse_args()
 
 
 def write_frame(args, in_gro, h5, frame, append):
-    pos = h5['/particles/{}/position/value'.format(args.group)][frame]
+    pos = h5["/particles/{}/position/value".format(args.group)][frame]
     valid_species = None
     try:
-        species = h5['/particles/{}/species/value'.format(args.group)][frame]
+        species = h5["/particles/{}/species/value".format(args.group)][frame]
     except:
-        species = h5['/particles/{}/species'.format(args.group)][frame]
+        species = h5["/particles/{}/species".format(args.group)][frame]
 
     if args.valid_species:
-        valid_species = set(map(int, args.valid_species.split(',')))
+        valid_species = set(map(int, args.valid_species.split(",")))
 
-    images = h5['/particles/{}/image/value'.format(args.group)][frame]
+    images = h5["/particles/{}/image/value".format(args.group)][frame]
     print(frame)
     try:
-        box = np.array(h5['/particles/{}/box/edges/value'.format(args.group)][frame])
+        box = np.array(h5["/particles/{}/box/edges/value".format(args.group)][frame])
     except:
-        box = np.array(h5['/particles/{}/box/edges'.format(args.group)])
+        box = np.array(h5["/particles/{}/box/edges".format(args.group)])
 
-    h5_pids = sorted([x for x in h5['/particles/{}/id/value'.format(args.group)][frame] if x != -1])
+    h5_pids = sorted([x for x in h5["/particles/{}/id/value".format(args.group)][frame] if x != -1])
 
-    ids = sorted(in_gro.atoms)
+    sorted(in_gro.atoms)
     ppid = 0
     max_gro_pid = max(in_gro.atoms)
     for pid, ppid in enumerate(h5_pids):
@@ -70,8 +69,12 @@ def write_frame(args, in_gro, h5, frame, append):
         s = species[pid]
         if ppid > max_gro_pid:
             in_gro.atoms[ppid] = files_io.Atom(
-                atom_id=ppid, name='T{}'.format(s), chain_name='XXX', chain_idx=ppid,
-                position=p+images[pid]*box if args.unfolded else p)
+                atom_id=ppid,
+                name="T{}".format(s),
+                chain_name="XXX",
+                chain_idx=ppid,
+                position=p + images[pid] * box if args.unfolded else p,
+            )
         if valid_species is None or species[pid] in valid_species:
             at_data = in_gro.atoms[ppid]
             if args.unfolded:
@@ -79,11 +82,11 @@ def write_frame(args, in_gro, h5, frame, append):
             else:
                 at_data = at_data._replace(position=p)
             if args.extend:
-                at_data = at_data._replace(name='T{}'.format(s))
+                at_data = at_data._replace(name="T{}".format(s))
 
             in_gro.atoms[ppid] = at_data
-    time_frame = h5['/particles/{}/position/time'.format(args.group)][frame]
-    in_gro.title = 'XXX molecule, t={}'.format(time_frame)
+    time_frame = h5["/particles/{}/position/time".format(args.group)][frame]
+    in_gro.title = "XXX molecule, t={}".format(time_frame)
     in_gro.write(args.output, force=True, append=append)
 
 
@@ -96,17 +99,17 @@ def main():
     in_gro.read()
 
     # Get the number of frames
-    pos = h5['/particles/{}/position/value'.format(args.group)]
+    pos = h5["/particles/{}/position/value".format(args.group)]
     nr_frames = pos.shape[0]
-    print(('Total number of frames: {}'.format(nr_frames)))
+    print(("Total number of frames: {}".format(nr_frames)))
     if args.store_trajectory:
         end_frame = nr_frames
         if args.e == -1:
             end_frame = nr_frames
         elif args.e > nr_frames:
-            raise RuntimeError('wrong end frame {} > {}'.format(args.e, nf_frames))
+            raise RuntimeError("wrong end frame {} > {}".format(args.e, nf_frames))
         elif args.b > args.e:
-            raise RuntimeError('Begin frame > end frame')
+            raise RuntimeError("Begin frame > end frame")
         else:
             end_frame = args.e
         frames = list(range(args.b, end_frame))
@@ -116,5 +119,5 @@ def main():
         write_frame(args, in_gro, h5, args.frame, append=False)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

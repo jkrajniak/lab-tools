@@ -31,46 +31,46 @@ from md_libs import _rdf
 
 def _args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('h5')
-    parser.add_argument('--bins', default=100, type=int)
-    parser.add_argument('-n', default=None, help='Index file')
-    parser.add_argument('--type1', default=None, help='Particle type group 1', type=str)
-    parser.add_argument('--type2', default=None, help='Particle type group 2', type=str)
-    parser.add_argument('-b', default=0, type=int)
-    parser.add_argument('-e', default=-1, type=int)
-    parser.add_argument('--cutoff', default=-1, type=float)
-    parser.add_argument('--no_normalize', default=False, action='store_true')
-    parser.add_argument('--plot', action='store_true', default=False)
-    parser.add_argument('--output', default=None, help='Output file')
-    parser.add_argument('--nt', default=4, type=int)
+    parser.add_argument("h5")
+    parser.add_argument("--bins", default=100, type=int)
+    parser.add_argument("-n", default=None, help="Index file")
+    parser.add_argument("--type1", default=None, help="Particle type group 1", type=str)
+    parser.add_argument("--type2", default=None, help="Particle type group 2", type=str)
+    parser.add_argument("-b", default=0, type=int)
+    parser.add_argument("-e", default=-1, type=int)
+    parser.add_argument("--cutoff", default=-1, type=float)
+    parser.add_argument("--no_normalize", default=False, action="store_true")
+    parser.add_argument("--plot", action="store_true", default=False)
+    parser.add_argument("--output", default=None, help="Output file")
+    parser.add_argument("--nt", default=4, type=int)
 
     return parser.parse_args()
 
 
 def get_single_rdf(h5file, type1, type2, index_file, cutoff, bins, do_norm, frame):
-    h5 = h5py.File(h5file, 'r', driver='stdio', libver='latest')
+    h5 = h5py.File(h5file, "r", driver="stdio", libver="latest")
 
     pids = None
     npart = None
 
     if index_file and (type1 or type2):
-        print('Use index file or particle types, not both')
+        print("Use index file or particle types, not both")
         sys.exit(1)
 
     has_types = False
     if index_file:
-        with open(index_file, 'r') as findex:
-            pids = list(map(int, ' '.join(findex.readlines()).split()))
+        with open(index_file, "r") as findex:
+            pids = list(map(int, " ".join(findex.readlines()).split()))
             npart = len(pids)
     elif type1 is not None:
         has_types = True
 
-    pos = h5['/particles/atoms/position/value']
-    ids = h5['/particles/atoms/id/value']
-    species = h5['/particles/atoms/species/value']
-    L = h5['/particles/atoms/box/edges']
-    if 'value' in L:
-        L = L['value'][-1]
+    pos = h5["/particles/atoms/position/value"]
+    ids = h5["/particles/atoms/id/value"]
+    species = h5["/particles/atoms/species/value"]
+    L = h5["/particles/atoms/box/edges"]
+    if "value" in L:
+        L = L["value"][-1]
     vol = L[0] * L[1] * L[2]
 
     result = np.zeros(bins)
@@ -98,7 +98,7 @@ def get_single_rdf(h5file, type1, type2, index_file, cutoff, bins, do_norm, fram
                 pid2_species.update(set(tt))
             pid2_species = list(pid2_species)
             if set(pid2_species).intersection(set(pid_species)):
-                raise RuntimeError('Particle ids of type1 and type2 overlap')
+                raise RuntimeError("Particle ids of type1 and type2 overlap")
             p_pids2 = np.where(np.in1d(id_frame, pid2_species))
             pp2 = p[p_pids2]
             multi = True
@@ -117,25 +117,23 @@ def get_single_rdf(h5file, type1, type2, index_file, cutoff, bins, do_norm, fram
         return None, None
     if multi:
         dx, tmp_r = _rdf.compute_rdf(
-            np.asarray(pp1, dtype=np.double), np.asarray(pp2, dtype=np.double),
-            L, bins, cutoff, False)
+            np.asarray(pp1, dtype=np.double), np.asarray(pp2, dtype=np.double), L, bins, cutoff, False
+        )
     else:
-        dx, tmp_r = _rdf.compute_rdf(
-            np.asarray(pp, dtype=np.double), None,
-            L, bins, cutoff, False)
+        dx, tmp_r = _rdf.compute_rdf(np.asarray(pp, dtype=np.double), None, L, bins, cutoff, False)
         npart2 = npart1
 
-    phi = npart2/vol
-    norm = phi*dx*npart1
+    phi = npart2 / vol
+    norm = phi * dx * npart1
     if do_norm:
         tmp_r /= norm
     result = np.nan_to_num(tmp_r)
 
-    return result, dx*(np.arange(0, bins)+0.5)
+    return result, dx * (np.arange(0, bins) + 0.5)
 
 
 def gets_rdf(h5, type1, type2, index_file, cutoff, bins=100, begin=0, end=-1, nt=4, do_norm=True):
-    pos = h5['/particles/atoms/position/value']
+    pos = h5["/particles/atoms/position/value"]
 
     print(pos.shape[0])
     frames = list(range(begin, pos.shape[0] if end == -1 else end))
@@ -151,44 +149,42 @@ def gets_rdf(h5, type1, type2, index_file, cutoff, bins=100, begin=0, end=-1, nt
 
     x = results[0][1]
     result = np.array(np.sum([np.nan_to_num(k[0]) for k in results], axis=0))
-    # This 
+    # This
     norm = float(len(frames))
 
-    return result/norm, x
+    return result / norm, x
 
 
 def main():
     args = _args()
-    h5 = h5py.File(args.h5, 'r')
+    h5 = h5py.File(args.h5, "r")
 
     pids = None
-    npart = None
 
     if args.n and (args.type1 or args.type2):
-        print('Use index file or particle types, not both')
+        print("Use index file or particle types, not both")
         sys.exit(1)
 
-    has_types = False
     if args.n:
-        with open(args.n, 'r') as findex:
-            pids = list(map(int, ' '.join(findex.readlines()).split()))
-            npart = len(pids)
+        with open(args.n, "r") as findex:
+            pids = list(map(int, " ".join(findex.readlines()).split()))
+            len(pids)
     elif args.type1 is not None:
-        has_types = True
-        type1 = list(map(int, args.type1.split(',')))
+        type1 = list(map(int, args.type1.split(",")))
         type2 = None
         if args.type2:
-            type2 = list(map(int, args.type2.split(',')))
+            type2 = list(map(int, args.type2.split(",")))
 
     result, x = gets_rdf(h5, type1, type2, args.n, args.cutoff, args.bins, args.b, args.e, args.nt, not args.no_normalize)
     if args.plot:
         from matplotlib import pyplot as plt
+
         plt.plot(x, result)
         plt.show()
     if args.output:
         np.savetxt(args.output, np.column_stack([x, result]))
-        print(('File saved {}'.format(args.output)))
+        print(("File saved {}".format(args.output)))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -1,5 +1,5 @@
-from . import files_io
+
 try:
-    from . import bonds
+    from . import bonds  # noqa
 except (ImportError, ValueError):
-    print(' No bonds module')
+    print(" No bonds module")

@@ -1,7 +1,7 @@
 Measurement of stress-strain relation with LAMMPS
 ==================================================
 
-Structure 
+Structure
 
  - `eq/` - this contains the files required to equilibrated the sample
  - `pull_step_x|y|z` - pulling in three directions (equilibrated mode)
@@ -17,4 +17,3 @@ Continuous mode
 ------------------
 
 In this type of measurment, the sample is continuously deformed in given direction and simultaneously the stress is measured.
-

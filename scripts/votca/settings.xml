@@ -29,7 +29,7 @@
     </inverse>
 
   </non-bonded>
-  
+
   <non-bonded>
     <name>B-B</name>
     <type1>B</type1>
@@ -59,7 +59,7 @@
     </inverse>
 
   </non-bonded>
-  
+
   <non-bonded>
     <name>A-B</name>
     <type1>A</type1>

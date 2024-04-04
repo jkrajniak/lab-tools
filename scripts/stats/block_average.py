@@ -17,7 +17,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import argparse
 import math
 import numpy as np
 import sys
@@ -25,21 +24,21 @@ import sys
 from matplotlib import pyplot as plt
 
 col = int(sys.argv[2])
-input_data = np.loadtxt(sys.argv[1])[:, col]*(-0.101325)
+input_data = np.loadtxt(sys.argv[1])[:, col] * (-0.101325)
 
 n = input_data.shape[0]
 out = []
 
 for tb in range(4, 30000, 100):
-    nb = int(math.ceil(n/tb))
-    #print tb, nb, input_data.shape[0], tb*nb
-    data = input_data[:tb*nb]
+    nb = int(math.ceil(n / tb))
+    # print tb, nb, input_data.shape[0], tb*nb
+    data = input_data[: tb * nb]
     nblocks = np.split(data, nb)
     mean = np.mean(data)
     tot_var = np.var(data)
     avg_block = np.average(nblocks, axis=1)
     var_block = np.mean(np.power(avg_block - mean, 2))
-    out.append([tb, tb*var_block/tot_var])
+    out.append([tb, tb * var_block / tot_var])
 
 out = np.array(out)
 plt.plot(out[:, 0], out[:, 1])

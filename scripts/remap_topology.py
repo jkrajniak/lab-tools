@@ -24,10 +24,10 @@ from md_libs import files_io
 
 
 def _args():
-    parser = argparse.ArgumentParser('Remap topology partially with given id map')
-    parser.add_argument('--in_top', required=True)
-    parser.add_argument('--out_top', required=True)
-    parser.add_argument('--mapping', required=True, help='The mapping file')
+    parser = argparse.ArgumentParser("Remap topology partially with given id map")
+    parser.add_argument("--in_top", required=True)
+    parser.add_argument("--out_top", required=True)
+    parser.add_argument("--mapping", required=True, help="The mapping file")
 
     return parser.parse_args()
 
@@ -42,7 +42,7 @@ def generate_new_bonded(in_bonded, mapping):
             new_b_list = [mapping.get(p, p) for p in b_list]
 
         new_params = b_params[:]
-        new_params.append('; get from {}'.format('-'.join(map(str, b_list))))
+        new_params.append("; get from {}".format("-".join(map(str, b_list))))
         output_data[tuple(new_b_list)] = new_params
 
     return output_data
@@ -54,7 +54,7 @@ def main():
     in_top = files_io.GROMACSTopologyFile(args.in_top)
     in_top.read()
 
-    mapping_file = open(args.mapping, 'r')
+    mapping_file = open(args.mapping, "r")
 
     mapping = {}
     new_names = {}
@@ -62,13 +62,12 @@ def main():
         t = l.split()
         (old_id, new_id), new_name = list(map(int, t[:2])), t[2]
         if old_id not in in_top.atoms:
-            raise RuntimeError('{} or {} not found in the atom list of topology'.format(
-                old_id, new_id))
+            raise RuntimeError("{} or {} not found in the atom list of topology".format(old_id, new_id))
         if old_id in mapping:
-            raise RuntimeError('Mapping file is wrong, {} already there'.format(old_id))
+            raise RuntimeError("Mapping file is wrong, {} already there".format(old_id))
         mapping[old_id] = new_id
         new_names[new_id] = new_name
-    print(('Read mapping file {}'.format(args.mapping)))
+    print(("Read mapping file {}".format(args.mapping)))
 
     # Prepare atoms if missing
     for old_id, new_id in sorted(list(mapping.items()), key=lambda x: x[1]):
@@ -87,6 +86,6 @@ def main():
 
     in_top.write(args.out_top)
 
-if __name__ == '__main__':
-    main()
 
+if __name__ == "__main__":
+    main()

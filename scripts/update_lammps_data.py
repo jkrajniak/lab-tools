@@ -17,24 +17,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import argparse
-import collections
-import datetime
 
 from md_libs import files_io
 
-__doc__ = 'Update lammps data file from other data file'
+__doc__ = "Update lammps data file from other data file"
 
 
 def _args():
-    parser = argparse.ArgumentParser(
-        description='Update LAMMPS data file',
-        add_help=True)
+    parser = argparse.ArgumentParser(description="Update LAMMPS data file", add_help=True)
 
-    parser.add_argument('--in_data', help='Inpput data file', required=True)
-    parser.add_argument('--out_data', help='Output LAMMPS data file', required=True)
-    parser.add_argument('--what_to_update', help='What to update, colon separate list: coeff,position')
+    parser.add_argument("--in_data", help="Inpput data file", required=True)
+    parser.add_argument("--out_data", help="Output LAMMPS data file", required=True)
+    parser.add_argument("--what_to_update", help="What to update, colon separate list: coeff,position")
 
     return parser
+
 
 def main():
     args = _args().parse_args()
@@ -43,7 +40,5 @@ def main():
     input_data.read_data(args.in_data)
 
 
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

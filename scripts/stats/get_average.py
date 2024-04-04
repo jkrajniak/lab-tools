@@ -23,29 +23,28 @@ import numpy as np
 
 def _args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('input_file')
-    parser.add_argument('column', type=int)
-    parser.add_argument('--rescale', type=float, default=1.0)
-    parser.add_argument('--block_size', type=float, default=22.0)
-    parser.add_argument('--append', default=None)
+    parser.add_argument("input_file")
+    parser.add_argument("column", type=int)
+    parser.add_argument("--rescale", type=float, default=1.0)
+    parser.add_argument("--block_size", type=float, default=22.0)
+    parser.add_argument("--append", default=None)
 
     return parser.parse_args()
 
 
 def main():
     args = _args()
-    input_data = np.loadtxt(args.input_file)[:, args.column]*args.rescale
+    input_data = np.loadtxt(args.input_file)[:, args.column] * args.rescale
 
-    avg = np.average(input_data[::int(args.block_size)])
-    std = np.std(input_data)*np.sqrt(args.block_size/input_data.shape[0])
+    avg = np.average(input_data[:: int(args.block_size)])
+    std = np.std(input_data) * np.sqrt(args.block_size / input_data.shape[0])
 
     if args.append:
-        with open(args.append, 'a+') as outf:
-            outf.write('{} {}\n'.format(avg, std))
+        with open(args.append, "a+") as outf:
+            outf.write("{} {}\n".format(avg, std))
     else:
-        print('avg: {} std:{}'.format(avg, std))
+        print("avg: {} std:{}".format(avg, std))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
-

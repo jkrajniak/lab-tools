@@ -24,12 +24,11 @@ from matplotlib import pyplot as plt
 
 
 def _args():
-    parser = argparse.ArgumentParser('Calculate block average.')
-    parser.add_argument('in_file', help='Input file, single column of time-series')
-    parser.add_argument('--plot', '-p', help='Plot variance against block size',
-                        action='store_true')
-    parser.add_argument('--max_t', help='Maximum distance', type=int)
-    parser.add_argument('--block', '-s', help='Block average size', type=float)
+    parser = argparse.ArgumentParser("Calculate block average.")
+    parser.add_argument("in_file", help="Input file, single column of time-series")
+    parser.add_argument("--plot", "-p", help="Plot variance against block size", action="store_true")
+    parser.add_argument("--max_t", help="Maximum distance", type=int)
+    parser.add_argument("--block", "-s", help="Block average size", type=float)
 
     return parser.parse_args()
 
@@ -41,15 +40,15 @@ def plot_blocks(data, max_t):
 
     si = []
     for t in range(2, max_t):
-        tb = np.floor(n/float(t))
+        tb = np.floor(n / float(t))
         x_blocks = np.array_split(data, tb)
         v2 = np.average(np.power(list(map(np.mean, x_blocks)) - mean, 2))
-        si.append([t, t*v2/var_tot])
+        si.append([t, t * v2 / var_tot])
     si = np.array(si)
 
     plt.plot(si[:, 0], si[:, 1])
-    plt.xlabel('s')
-    plt.ylabel(r'$s\sigma^2(<A_b>)/\sigma^2(A)$')
+    plt.xlabel("s")
+    plt.ylabel(r"$s\sigma^2(<A_b>)/\sigma^2(A)$")
     plt.show()
 
 
@@ -63,8 +62,8 @@ def main():
     elif args.block:
         mean_value = np.mean(data)
         std_value = np.std(data, ddof=1)
-        print(('AVG={}, std={}'.format(mean_value, std_value*np.sqrt(args.block/data.shape[0]))))
+        print(("AVG={}, std={}".format(mean_value, std_value * np.sqrt(args.block / data.shape[0]))))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -22,10 +22,9 @@ from md_libs import files_io
 
 
 def _args():
-    parser = argparse.ArgumentParser(
-        'Read GAUSSIAN log file and copy partial charges to GROMASC topology')
-    parser.add_argument('gaussian_log', help='Input GAUSSIAN log file')
-    parser.add_argument('input_topology', help='Input GROMACS topology')
+    parser = argparse.ArgumentParser("Read GAUSSIAN log file and copy partial charges to GROMASC topology")
+    parser.add_argument("gaussian_log", help="Input GAUSSIAN log file")
+    parser.add_argument("input_topology", help="Input GROMACS topology")
 
     return parser.parse_args()
 
@@ -34,12 +33,12 @@ def main():
     args = _args()
     in_esp_charges = False
     espl = []
-    with open(args.gaussian_log, 'r') as gaussian_log:
+    with open(args.gaussian_log, "r") as gaussian_log:
         for l in gaussian_log:
-            if 'ESP charges:' in l:
+            if "ESP charges:" in l:
                 in_esp_charges = True
                 espl = []
-            elif 'Sum of ESP charges' in l:
+            elif "Sum of ESP charges" in l:
                 in_esp_charges = False
             elif in_esp_charges:
                 tmpl = l.split()
@@ -57,12 +56,12 @@ def main():
         at_prefix, new_charge = espl[at_idx]
         if in_top.atoms[at_id].name.startswith(at_prefix):
             if in_top.atoms[at_id].charge != float(new_charge):
-                print(('New charge {} old charge {}'.format(new_charge, in_top.atoms[at_id].charge)))
+                print(("New charge {} old charge {}".format(new_charge, in_top.atoms[at_id].charge)))
             in_top.atoms[at_id].charge = float(new_charge)
         else:
-            raise RuntimeError('Wrong atom prefix')
+            raise RuntimeError("Wrong atom prefix")
     in_top.write(force=True)
 
-if __name__ == '__main__':
-    main()
 
+if __name__ == "__main__":
+    main()
