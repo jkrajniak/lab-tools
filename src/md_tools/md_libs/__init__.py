@@ -1,4 +1,3 @@
-
 try:
     from . import bonds  # noqa
 except (ImportError, ValueError):

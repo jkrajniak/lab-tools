@@ -64,12 +64,12 @@ def main():
     h5 = h5py.File(args.in_file, "r+")
 
     if "sorted" in h5.attrs and not args.force:
-        yn = input("Warning, file was already sorted. Do you want to repeat it? (yes/no)")
+        yn = eval(input("Warning, file was already sorted. Do you want to repeat it? (yes/no)"))
         if yn == "no":
             return False
 
     if not args.force:
-        yn = input("Do you want to sort file {}? (yes/no): ".format(args.in_file))
+        yn = eval(input("Do you want to sort file {}? (yes/no): ".format(args.in_file)))
     else:
         yn = "yes"
     if yn == "yes":

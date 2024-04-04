@@ -97,11 +97,12 @@ def main():
     else:
         data_file = np.loadtxt(args.h5file, skiprows=1)
         observables = open(args.h5file, "r").readline().split()
+
         def _show_observable(w, x, y, z, s):
             return _show_csv_observable(w, x, y, z, s, observables)
 
     _print_observables(observables)
-    ans = input("Select: ")
+    ans = eval(input("Select: "))
     while ans != "0":
         sum_values = False
         try:
@@ -111,12 +112,12 @@ def main():
             else:
                 ans_index = list(map(int, ans.split()))
         except ValueError:
-            ans = input("Select: ")
+            ans = eval(input("Select: "))
             continue
         print(sum_values)
         obs_names = set([observables[x - 1] for x in ans_index])
         _show_observable(obs_names, data_file, args.begin, args, sum_values)
-        ans = input("Select: ")
+        ans = eval(input("Select: "))
 
 
 if __name__ == "__main__":

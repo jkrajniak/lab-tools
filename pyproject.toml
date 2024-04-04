@@ -63,7 +63,9 @@ exclude = [
     "node_modules",
     "site-packages",
     "venv",
-    "*.pyi", "tests/*"
+    "*.pyi",
+    "tests/*",
+    "scripts/*"
 ]
 
 line-length = 120

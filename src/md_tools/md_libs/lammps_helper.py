@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import StringIO
+import io
 import collections
 import math
 
@@ -31,7 +31,7 @@ def get_lammps(filename, return_frames=False):
         filename: The log filename.
         return_frames: Return the list of timeframes.
 
-    Retunrs:
+    Returns:
         The single StringIO object with the data or the list of StringIO objects if the data should be as the timeseries.
 
     """
@@ -40,23 +40,23 @@ def get_lammps(filename, return_frames=False):
         lines = []
         in_section = False
         headers = []
-        for l in of:
-            if in_section and l.startswith("Loop"):
+        for line in of:
+            if in_section and line.startswith("Loop"):
                 in_section = False
                 if return_frames:
                     frame_lines.append(lines)
                     lines = []
                 continue
-            if l.startswith("Time") or l.startswith("Step"):
+            if line.startswith("Time") or line.startswith("Step"):
                 in_section = True
-                headers.append(l.split())
+                headers.append(line.split())
                 continue
             if in_section:
-                lines.append(l)
+                lines.append(line)
         if return_frames:
-            return [StringIO.StringIO("".join(l)) for l in frame_lines], headers
+            return [io.StringIO("".join(line)) for line in frame_lines], headers
         else:
-            return StringIO.StringIO("".join(lines)), headers[0]
+            return io.StringIO("".join(lines)), headers[0]
 
 
 def block_average(input_data, max_tb=200):
@@ -96,16 +96,16 @@ def parse_timedata(filename):
             if line.startswith("#"):
                 continue
             if first_frame:
-                time_step, nrows = map(int, line.split())
+                time_step, nrows = list(map(int, line.split()))
                 first_frame = False
                 rowcounter = 0
                 continue
             if rowcounter < nrows:
-                timeframes[int(time_step)].append(map(float, line.split()))
+                timeframes[int(time_step)].append(list(map(float, line.split())))
                 rowcounter += 1
                 continue
             if rowcounter == nrows:
-                time_step, nrows = map(int, line.split())
+                time_step, nrows = list(map(int, line.split()))
                 rowcounter = 0
     for time_frame in timeframes:
         timeframes[time_frame] = np.array(timeframes[time_frame])

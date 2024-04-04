@@ -37,12 +37,12 @@ def gen_bonded_tuples(g, num, bond_pair):
     paths = []
     if num > 3:
         for nb0 in g[b0]:
-            paths.extend(nx.single_source_shortest_path(g, nb0, num - 1).values())
+            paths.extend(list(nx.single_source_shortest_path(g, nb0, num - 1).values()))
         for nb1 in g[b1]:
-            paths.extend(nx.single_source_shortest_path(g, nb1, num - 1).values())
+            paths.extend(list(nx.single_source_shortest_path(g, nb1, num - 1).values()))
 
-    paths.extend(nx.single_source_shortest_path(g, b0, num - 1).values())
-    paths.extend(nx.single_source_shortest_path(g, b1, num - 1).values())
+    paths.extend(list(nx.single_source_shortest_path(g, b0, num - 1).values()))
+    paths.extend(list(nx.single_source_shortest_path(g, b1, num - 1).values()))
     output = set()
     for b in paths:
         if len(b) == num and b0 in b and b1 in b:
@@ -140,8 +140,9 @@ def write(self, lmp_cfg: LAMMPSWriterConfig, xzyfile_path: str, g: nx.Graph, out
         datainfo.write("Bonds\n")
         datainfo.write("\n")
         for i in range(0, len(bondinfo[0])):
-            datainfo.write("{:8d} {:8d} {:8d} {:8d}\n".format(
-                i + 1, bondinfo[0][i], bondinfo[1][i][0], bondinfo[1][i][1]))
+            datainfo.write(
+                "{:8d} {:8d} {:8d} {:8d}\n".format(i + 1, bondinfo[0][i], bondinfo[1][i][0], bondinfo[1][i][1])
+            )
         datainfo.write("\n")
         datainfo.write("Angles\n")
         datainfo.write("\n")
@@ -153,4 +154,4 @@ def write(self, lmp_cfg: LAMMPSWriterConfig, xzyfile_path: str, g: nx.Graph, out
             )
         datainfo.write("\n")
     datainfo.close()
-    print(len(bondinfo[0]), len(angleinfo[0]))
+    print((len(bondinfo[0]), len(angleinfo[0])))

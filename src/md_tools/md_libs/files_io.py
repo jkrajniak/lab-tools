@@ -344,7 +344,11 @@ class GROFile(CoordinateFile):
                     at = input_gro.atoms[pid]
                     output_gro.id_map[new_pid] = pid
                     output_gro.atoms[new_pid] = Atom(
-                        atom_id=new_pid, name=at.name, chain_name=at.chain_name, chain_idx=at.chain_idx, position=at.position
+                        atom_id=new_pid,
+                        name=at.name,
+                        chain_name=at.chain_name,
+                        chain_idx=at.chain_idx,
+                        position=at.position,
                     )
                     new_pid += 1
             else:
@@ -377,7 +381,8 @@ class GROFile(CoordinateFile):
             for at_id in sorted(self.atoms):
                 at = self.atoms[at_id]
                 output.append(
-                    fmt % (at.chain_idx, at.chain_name, at.name, at.atom_id, at.position[0], at.position[1], at.position[2])
+                    fmt
+                    % (at.chain_idx, at.chain_name, at.name, at.atom_id, at.position[0], at.position[1], at.position[2])
                 )
 
             output.append("%f %f %f\n" % tuple(self.box))
@@ -405,7 +410,11 @@ class GROFile(CoordinateFile):
         for at_id in particle_ids:
             p = system.storage.getParticle(at_id)
             self.atoms[at_id] = Atom(
-                atom_id=at_id, name=atom_name[at_id], chain_name=chain_name[at_id], chain_idx=chain_idx[at_id], position=p.pos
+                atom_id=at_id,
+                name=atom_name[at_id],
+                chain_name=chain_name[at_id],
+                chain_idx=chain_idx[at_id],
+                position=p.pos,
             )
         self.title = "XXX"
         self.box = system.bc.boxL
@@ -522,6 +531,8 @@ class XYZFile(CoordinateFile):
 
         at_id = 1  # XYZ does not have notion about atom id
         chain_name = "DUMMY"
+        chain_idx = 1
+
         for line in self.content[2 : number_of_atoms + 2]:
             t = line.split()
             at_name = t[0]
@@ -529,11 +540,16 @@ class XYZFile(CoordinateFile):
             pos_y = float(t[2]) * self.scale_factor
             pos_z = float(t[3]) * self.scale_factor
             self.atoms[at_id] = Atom(
-                atom_id=at_id, name=at_name, chain_name=chain_name, chain_idx=1, position=numpy.array([pos_x, pos_y, pos_z])
+                atom_id=at_id,
+                name=at_name,
+                chain_name=chain_name,
+                chain_idx=1,
+                position=numpy.array([pos_x, pos_y, pos_z]),
             )
-            self.fragments[chain_name][at_ame] = self.atom[at_id]
+            self.fragments[chain_name][at_name] = self.atom[at_id]
             if chain_name not in self.chains:
                 self.chains[chain_name] = {}
+                chain_idx += 1
             if chain_idx not in self.chains[chain_name]:
                 self.chains[chain_name][chain_idx] = self.atoms[at_id]
 
@@ -631,7 +647,9 @@ class GROMACSTopologyFile(object):
             "pairs": self._write_pairs,
             "cross_bonds": lambda: self._write_default([self.new_data.get("cross_bonds"), self.cross_bonds]),
             "cross_angles": lambda: self._write_default([self.new_data.get("cross_angles"), self.cross_angles]),
-            "cross_dihedrals": lambda: self._write_default([self.new_data.get("cross_dihedrals"), self.cross_dihedrals]),
+            "cross_dihedrals": lambda: self._write_default(
+                [self.new_data.get("cross_dihedrals"), self.cross_dihedrals]
+            ),
             "cross_pairs": lambda: self._write_default([self.new_data.get("cross_pairs"), self.cross_pairs]),
         }
         self.current_charges = {}
@@ -664,20 +682,20 @@ class GROMACSTopologyFile(object):
     def get_graph(self):
         """Returns graph."""
         output_graph = nx.Graph(box=None)
-        for at_id, g_at in self.atoms.items():
+        for at_id, g_at in list(self.atoms.items()):
             output_graph.add_node(
                 at_id, name=g_at.name, res_id=g_at.chain_idx, position=(-1, -1, -1), chain_name=g_at.chain_name
             )
 
-        for (b1, b2), params in self.bonds.items():
+        for (b1, b2), params in list(self.bonds.items()):
             output_graph.add_edge(b1, b2, params=params, cross=False)
 
         if "bonds" in self.new_data:
-            for (b1, b2), params in self.new_data["bonds"].items():
+            for (b1, b2), params in list(self.new_data["bonds"].items()):
                 output_graph.add_edge(b1, b2, params=params, cross=False)
 
         if "cross_bonds" in self.new_data:
-            for (b1, b2), params in self.new_data["cross_bonds"].items():
+            for (b1, b2), params in list(self.new_data["cross_bonds"].items()):
                 output_graph.add_edge(b1, b2, params=params, cross=True)
 
         for n_id in output_graph.nodes():
@@ -691,7 +709,7 @@ class GROMACSTopologyFile(object):
           pdbfile: The pdb file.
         """
         logger.info("Update position from file %s", pdbfile.file_name)
-        for k, v in pdbfile.atoms.items():
+        for k, v in list(pdbfile.atoms.items()):
             self.atoms[k].position = v.position
 
     def remove_atom(self, atom_id, renumber=True):
@@ -762,7 +780,9 @@ class GROMACSTopologyFile(object):
 
     def _replicate_lists(self, n_mols, n_atoms, input_list, shift=0):
         return {
-            tuple([shift + x + (mol * n_atoms) for x in l]): v for mol in range(n_mols) for l, v in list(input_list.items())
+            tuple([shift + x + (mol * n_atoms) for x in lst]): v
+            for mol in range(n_mols)
+            for lst, v in list(input_list.items())
         }
 
     def replicate(self):
@@ -991,7 +1011,7 @@ class GROMACSTopologyFile(object):
         self.angletypes[(k, j, i)] = params
 
     def _parse_dihedraltypes(self, raw_data):
-        i, j, k, l = raw_data[:4]
+        i, j, k, l = raw_data[:4]  # noqa: E741
         if i not in self.dihedraltypes:
             self.dihedraltypes[i] = {}
         if j not in self.dihedraltypes[i]:
@@ -1107,7 +1127,7 @@ class GROMACSTopologyFile(object):
 
     def _write_atomtypes(self):
         return_data = []
-        for atom_type, values in self.atomtypes.items():
+        for atom_type, values in list(self.atomtypes.items()):
             return_data.append("{name} {mass} {charge} {type} {sigma} {epsilon}".format(**values))
         return return_data
 
@@ -1134,7 +1154,7 @@ class GROMACSTopologyFile(object):
             if not isinstance(i, tuple):
                 for j in self.dihedraltypes[i]:
                     for k in self.dihedraltypes[i][j]:
-                        for l, params in list(self.dihedraltypes[i][j][k].items()):
+                        for l, params in list(self.dihedraltypes[i][j][k].items()):  # noqa: E741
                             return_data.append(
                                 "{} {} {} {} {} {}".format(i, j, k, l, params["func"], " ".join(params["params"]))
                             )
@@ -1201,7 +1221,7 @@ class GROMACSTopologyFile(object):
 
         flat_data = []
         for data in datas:
-            for key, values in data.items():
+            for key, values in list(data.items()):
                 rev_key = tuple(reversed(key))
                 if tuple(key) not in check_in or rev_key not in check_in or rev_key not in data:
                     flat_data.append(list(key) + list(values))
@@ -1425,7 +1445,7 @@ class LammpsReader(object):
         name_seq = settings.name_seq
         output_graph = nx.Graph(box=(self.box["x"], self.box["y"], self.box["z"]))
         seq_idx = {k: 0 for k in name_seq}
-        for at_id, lmp_at in self.atoms.items():
+        for at_id, lmp_at in list(self.atoms.items()):
             chain_name = type2chain_name[lmp_at["atom_type"]]
             at_seq = name_seq[chain_name]
             chain_len = len(at_seq)
@@ -1436,7 +1456,7 @@ class LammpsReader(object):
             seq_idx[chain_name] += 1
 
         # Adding edges
-        for bond_id, bond_list in self.topology["bonds"].items():
+        for bond_id, bond_list in list(self.topology["bonds"].items()):
             for b1, b2 in bond_list:
                 output_graph.add_edge(b1, b2, bond_type=bond_id)
 
@@ -1448,13 +1468,13 @@ class LammpsReader(object):
 
     def get_simple_graph(self):
         output_graph = nx.Graph(box=(self.box["x"], self.box["y"], self.box["z"]))
-        for at_id, lmp_at in self.atoms.items():
+        for at_id, lmp_at in list(self.atoms.items()):
             atom_type = lmp_at["atom_type"]
             mol_idx = lmp_at["res_id"]
             position = lmp_at["position"]
             output_graph.add_node(at_id, position=position, atom_type=atom_type, mol_idx=mol_idx)
         # Adding edges
-        for bond_id, bond_list in self.topology["bonds"].items():
+        for bond_id, bond_list in list(self.topology["bonds"].items()):
             for b1, b2 in bond_list:
                 output_graph.add_edge(b1, b2, bond_type=bond_id)
 
@@ -1468,9 +1488,9 @@ class LammpsReader(object):
         g = self.get_simple_graph()
         content = ["Polymer Network System", ""]
 
-        num_bonds = len([p for v in self.topology["bonds"].values() for p in v])
-        num_angles = len([p for v in self.topology["angles"].values() for p in v])
-        num_atom_types = len(set([a["atom_type"] for a in self.atoms.values()]))
+        num_bonds = len([p for v in list(self.topology["bonds"].values()) for p in v])
+        num_angles = len([p for v in list(self.topology["angles"].values()) for p in v])
+        num_atom_types = len(set([a["atom_type"] for a in list(self.atoms.values())]))
         num_bond_types = len(self.topology["bonds"])
         num_angle_types = len(self.topology["angles"])
 
@@ -1488,7 +1508,7 @@ class LammpsReader(object):
         content.append("")
         content.append("Masses")
         content.append("")
-        for at_type, mass in self._mass_type.items():
+        for at_type, mass in list(self._mass_type.items()):
             content.append(f"{at_type} {mass}")
         content.append("")
         content.append("Atoms")
@@ -1511,7 +1531,7 @@ class LammpsReader(object):
         content.append("Bonds")
         content.append("")
         bond_idx = 1
-        for bond_id, bond_list in self.topology["bonds"].items():
+        for bond_id, bond_list in list(self.topology["bonds"].items()):
             for b1, b2 in bond_list:
                 content.append("{:8d} {:8d} {:8d} {:8d}\n".format(bond_idx, b1, b2, bond_id))
                 bond_idx += 1
@@ -1519,7 +1539,7 @@ class LammpsReader(object):
         content.append("Angles")
         content.append("")
         angle_idx = 1
-        for angle_id, angle_list in self.topology["angles"].items():
+        for angle_id, angle_list in list(self.topology["angles"].items()):
             for a1, a2, a3 in angle_list:
                 content.append("{:8d} {:8d} {:8d} {:8d} {:8d}\n".format(angle_idx, a1, a2, a3, angle_id))
                 angle_idx += 1
@@ -1542,7 +1562,11 @@ class LammpsReader(object):
             self._box_translate[tag] = lo
             self.box[tag] = hi - lo
         elif (
-            "atoms" in sp_line or "bonds" in sp_line or "angles" in sp_line or "dihedrals" in sp_line or "impropers" in sp_line
+            "atoms" in sp_line
+            or "bonds" in sp_line
+            or "angles" in sp_line
+            or "dihedrals" in sp_line
+            or "impropers" in sp_line
         ):
             self._item_counters[sp_line[1]] = int(sp_line[0])
 
