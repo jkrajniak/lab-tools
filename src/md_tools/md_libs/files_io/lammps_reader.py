@@ -221,7 +221,10 @@ class LammpsReader(object):
 
     def get_atoms_as_dataframe(self) -> pd.DataFrame:
         """Returns atoms as pandas DataFrame."""
-        return pd.DataFrame(self.atoms)
+        df = pd.DataFrame(self.atoms).T
+        # Sort by index
+        df = df.sort_index()
+        return df
 
     def get_graph(self, settings):
         """Creates nx.Graph object from coordinate and topology data.
@@ -386,6 +389,11 @@ class LammpsReader(object):
         if sp_line_len == 10:
             sp_line[7:10] = list(map(int, sp_line[7:10]))
             at_id, at_tag, at_type, q, x, y, z, nx, ny, nz = sp_line
+        elif sp_line_len == 9:
+            # atom-ID molecule-ID atom-type x y z nx ny nz
+            sp_line[6:10] = list(map(int, sp_line[6:10]))
+            at_id, at_tag, at_type, x, y, z, nx, ny, nz = sp_line
+            q = 0
         elif sp_line_len == 6:
             at_id, at_tag, at_type, x, y, z = sp_line
             q = 0
